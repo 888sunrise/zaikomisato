@@ -3,41 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>三郷倉庫 器具・電材 横断在庫管理システム</title>
+    <title>全在庫状況まとめ - 三郷・事務所横断在庫管理</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- SheetJS for Excel/CSV parsing and writing -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['"Noto Sans JP"', 'Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#eff6ff',
-                            100: '#dbeafe',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                            800: '#1e40af',
-                            900: '#1e3a8a',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans JP', sans-serif; }
-        .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 700; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -45,299 +19,226 @@
         input, select, button { -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased select-none">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased select-none p-3 sm:p-6">
 
-    <!-- Header Navigation -->
-    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30">
-        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-14 sm:h-16">
-                <!-- Logo & Title -->
-                <div class="flex items-center space-x-2.5">
-                    <div class="bg-blue-600 p-1.5 sm:p-2 rounded-lg text-white flex items-center justify-center">
-                        <i class="fa-solid fa-layer-group text-base sm:text-xl"></i>
+    <div class="max-w-7xl w-full mx-auto space-y-4 sm:space-y-6">
+
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                    <i class="fa-solid fa-boxes-stacked text-blue-600"></i>
+                    <span>全在庫状況まとめ</span>
+                </h1>
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-500 mt-0.5">
+                    <span>三郷倉庫・事務所内在庫 自動照会・自動引き当て管理</span>
+                    <span class="text-slate-300 hidden sm:inline">|</span>
+                    <span class="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-200/60 px-2 py-0.5 rounded">
+                        <i class="fa-solid fa-clock-rotate-left text-blue-600"></i>
+                        <span>最終更新日時：<span id="lastUpdatedDisplay">未更新</span></span>
+                    </span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <button onclick="openModal('adminModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold px-3 py-2 rounded-lg text-xs sm:text-sm border border-slate-700 transition flex items-center gap-1.5 shadow-sm active:scale-[0.98]">
+                    <i class="fa-solid fa-user-shield text-amber-400"></i>
+                    <span>管理メニュー</span>
+                </button>
+                <button onclick="openModal('newItemModal')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-xs sm:text-sm shadow-md transition flex items-center gap-1.5 active:scale-[0.98]">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>新規登録</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dynamic Verification Toast / Alert -->
+        <div id="verificationAlert" class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs sm:text-sm text-emerald-800 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+                <div>
+                    <span class="font-bold">データ自動検証完了：</span>
+                    <span id="verificationMessage">型番総数 263件 / 総台数 800台 (ランプ:457, 安定器:15, 器具:62, 三郷在庫:207, 電材他:59) 完全一致</span>
+                </div>
+            </div>
+            <span class="bg-emerald-200 text-emerald-900 text-[10px] font-bold px-2 py-0.5 rounded-full">精査済</span>
+        </div>
+
+        <!-- Summary Dashboard -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
+            
+            <!-- Card 1: Total Model Count & Today's Net Change -->
+            <div onclick="filterCategoryFromDashboard('')" class="md:col-span-4 bg-white border border-slate-200 hover:border-blue-300 rounded-xl p-4 sm:p-5 shadow-sm flex flex-col justify-between cursor-pointer transition active:scale-[0.99]" title="クリックですべてのカテゴリを表示">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">総型番数</span>
+                    <span class="text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full">全表示</span>
+                </div>
+                <div class="flex items-baseline gap-1 mt-2">
+                    <span id="statTotalModels" class="text-3xl sm:text-4xl font-black text-blue-600 tracking-tight">263</span>
+                    <span class="text-sm font-bold text-slate-700">件</span>
+                </div>
+                <div class="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span class="text-slate-500 font-medium">当日の増減:</span>
+                    <span id="statTodayNetChange" class="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">±0 台 (入庫 0 / 出庫 0)</span>
+                </div>
+                <div class="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+                    <i class="fa-solid fa-database"></i> 全カテゴリ統合一括管理マスター
+                </div>
+            </div>
+
+            <!-- Card 2: Category Quantity Breakdown -->
+            <div class="md:col-span-8 bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">大分類別 在庫台数内訳</span>
+                    <span class="text-[10px] text-slate-400"><i class="fa-solid fa-hand-pointer text-blue-500 mr-0.5"></i>数字を押すと一覧が絞り込まれます</span>
+                </div>
+                <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center divide-x-0 sm:divide-x divide-slate-100">
+                    <div onclick="filterCategoryFromDashboard('ランプ')" class="p-1.5 rounded-lg hover:bg-purple-50 cursor-pointer transition active:scale-95" title="「ランプ」で絞り込み">
+                        <div class="text-[11px] font-bold text-slate-500">ランプ</div>
+                        <div id="statLampQty" class="text-lg sm:text-xl font-extrabold text-slate-800 mt-1">457</div>
                     </div>
-                    <div>
-                        <h1 class="text-sm sm:text-lg font-bold tracking-wide leading-tight">三郷・事務所横断 在庫管理</h1>
-                        <p class="text-[10px] sm:text-xs text-slate-400 hidden sm:block">器具・安定器・ランプ・電材一括引き当て</p>
+                    <div onclick="filterCategoryFromDashboard('安定器')" class="p-1.5 rounded-lg hover:bg-amber-50 cursor-pointer transition active:scale-95" title="「安定器」で絞り込み">
+                        <div class="text-[11px] font-bold text-slate-500">安定器</div>
+                        <div id="statBallastQty" class="text-lg sm:text-xl font-extrabold text-slate-800 mt-1">15</div>
+                    </div>
+                    <div onclick="filterCategoryFromDashboard('器具')" class="p-1.5 rounded-lg hover:bg-blue-50 cursor-pointer transition active:scale-95" title="「器具」で絞り込み">
+                        <div class="text-[11px] font-bold text-slate-500">器具</div>
+                        <div id="statFixtureQty" class="text-lg sm:text-xl font-extrabold text-slate-800 mt-1">62</div>
+                    </div>
+                    <div onclick="filterCategoryFromDashboard('三郷在庫')" class="p-1.5 rounded-lg hover:bg-indigo-50 cursor-pointer transition active:scale-95" title="「三郷在庫」で絞り込み">
+                        <div class="text-[11px] font-bold text-slate-500">三郷在庫</div>
+                        <div id="statMisatoQty" class="text-lg sm:text-xl font-extrabold text-slate-800 mt-1">207</div>
+                    </div>
+                    <div onclick="filterCategoryFromDashboard('電材他')" class="p-1.5 rounded-lg hover:bg-emerald-50 cursor-pointer transition active:scale-95" title="「電材他」で絞り込み">
+                        <div class="text-[11px] font-bold text-slate-500">電材他</div>
+                        <div id="statElectricQty" class="text-lg sm:text-xl font-extrabold text-slate-800 mt-1">59</div>
+                    </div>
+                    <div onclick="filterCategoryFromDashboard('')" class="p-1.5 bg-blue-50/70 hover:bg-blue-100/70 rounded-lg sm:rounded-none cursor-pointer transition active:scale-95" title="すべてのカテゴリを表示">
+                        <div class="text-[11px] font-bold text-blue-700">合計台数</div>
+                        <div id="statTotalQty" class="text-lg sm:text-xl font-black text-blue-600 mt-1">800</div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Admin & Tools buttons -->
-                <div class="flex items-center space-x-2">
-                    <button onclick="openModal('adminModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium border border-slate-700 transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-user-shield text-amber-400 text-sm sm:text-base"></i>
-                        <span class="hidden xs:inline">管理者メニュー</span>
-                        <span class="xs:hidden">管理</span>
+        <!-- Controls Card -->
+        <div id="inventoryTableSection" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5 space-y-3">
+            <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+                
+                <!-- Search Input with Clear Button -->
+                <div class="relative flex-1 flex items-center">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 text-slate-400 text-base"></i>
+                    <input type="text" id="searchInput" oninput="onSearchInput()" placeholder="型番、製品名、保管場所で検索 (例: H4C、OD261、風呂場)..." class="w-full pl-12 pr-28 py-3 border-2 border-slate-300 rounded-xl text-sm sm:text-base font-medium focus:outline-none focus:border-blue-600 transition shadow-inner">
+                    
+                    <!-- Search Match Count Badge (hidden when search is empty) -->
+                    <span id="searchResultBadge" class="hidden absolute right-12 bg-blue-100 text-blue-800 font-extrabold text-xs px-2.5 py-1 rounded-md transition-all">
+                        <span id="searchResultCount">0</span> 件
+                    </span>
+
+                    <!-- Clear Button -->
+                    <button id="searchClearBtn" onclick="clearSearch()" class="hidden absolute right-3 text-slate-400 hover:text-slate-600 p-1 focus:outline-none transition active:scale-90" title="検索クリア">
+                        <i class="fa-solid fa-circle-xmark text-xl sm:text-2xl text-slate-400 hover:text-rose-500"></i>
                     </button>
                 </div>
-            </div>
-        </div>
-    </header>
 
-    <!-- Main Container -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+                <!-- Select Filters -->
+                <div class="flex items-center gap-2">
+                    <select id="categoryFilter" onchange="renderTable()" class="border-2 border-slate-300 rounded-xl px-3 py-2.5 text-xs sm:text-sm bg-white text-slate-700 font-bold focus:outline-none focus:border-blue-600">
+                        <option value="">すべての大分類</option>
+                        <option value="ランプ">大分類: ランプ</option>
+                        <option value="安定器">大分類: 安定器</option>
+                        <option value="器具">大分類: 器具</option>
+                        <option value="三郷在庫">大分類: 三郷在庫</option>
+                        <option value="電材他">大分類: 電材他</option>
+                    </select>
 
-        <!-- Category Summary Quick Filter Bar -->
-        <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between overflow-x-auto gap-2 scrollbar-none">
-            <span class="text-xs font-bold text-slate-500 shrink-0 px-2"><i class="fa-solid fa-filter mr-1"></i>大分類絞り込み:</span>
-            <div id="categoryBadgesContainer" class="flex gap-2 shrink-0">
-                <!-- JS Dynamic badges -->
-            </div>
-        </div>
-
-        <!-- Stats Dashboard -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            <div class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
-                <div>
-                    <p class="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">全登録品目数</p>
-                    <p id="statTotalItems" class="text-lg sm:text-2xl font-bold text-slate-800 mt-0.5 sm:mt-1">0</p>
-                </div>
-                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-sm sm:text-lg">
-                    <i class="fa-solid fa-list-check"></i>
-                </div>
-            </div>
-            
-            <div class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
-                <div>
-                    <p class="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">総在庫点数（台数）</p>
-                    <p id="statTotalQty" class="text-lg sm:text-2xl font-bold text-slate-800 mt-0.5 sm:mt-1">0</p>
-                </div>
-                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center text-sm sm:text-lg">
-                    <i class="fa-solid fa-cubes"></i>
+                    <select id="stockFilter" onchange="renderTable()" class="border-2 border-slate-300 rounded-xl px-3 py-2.5 text-xs sm:text-sm bg-white text-slate-700 font-bold focus:outline-none focus:border-blue-600">
+                        <option value="inStock" selected>在庫あり (1台以上)</option>
+                        <option value="all">すべての台数 (0台含む)</option>
+                        <option value="outOfStock">在庫なし (0台)</option>
+                    </select>
                 </div>
             </div>
 
-            <div class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
-                <div>
-                    <p class="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">要補充 (安全在庫以下)</p>
-                    <p id="statLowStock" class="text-lg sm:text-2xl font-bold text-rose-600 mt-0.5 sm:mt-1">0</p>
-                </div>
-                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center text-sm sm:text-lg">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                </div>
-            </div>
-
-            <div class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
-                <div>
-                    <p class="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">本日の入出庫履歴</p>
-                    <p id="statTodayLogs" class="text-lg sm:text-2xl font-bold text-indigo-600 mt-0.5 sm:mt-1">0</p>
-                </div>
-                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center text-sm sm:text-lg">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
+            <!-- Instant Search Info Prompt -->
+            <div id="searchPromptNotice" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-2.5 text-xs text-blue-900 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-amber-500 text-sm"></i>
+                    <span>検索結果が表示中：対象型番の右側にある <b class="text-rose-600">[出庫]</b> または <b class="text-emerald-600">[入庫]</b> ボタンを押すと、そのまま即時登録できます。</span>
                 </div>
             </div>
         </div>
 
-        <!-- Quick Action Cards (出庫 / 入庫) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            <!-- 出庫 / 引き当て -->
-            <div class="bg-gradient-to-br from-rose-500 to-rose-600 text-white rounded-xl p-4 sm:p-5 shadow-sm hover:shadow-md transition">
-                <div class="flex justify-between items-start mb-2 sm:mb-3">
-                    <div>
-                        <span class="bg-rose-400/40 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full text-white">Pattern ② 出庫</span>
-                        <h2 class="text-base sm:text-xl font-bold mt-1">現場に必要な器具・資材の持ち出し</h2>
-                        <p class="text-xs text-rose-100 mt-0.5 sm:mt-1">型番・大分類から在庫を検索し、自動引き当てで在庫数を減らします。</p>
-                    </div>
-                    <div class="p-2 sm:p-3 bg-white/10 rounded-lg shrink-0">
-                        <i class="fa-solid fa-truck-ramp-box text-xl sm:text-2xl"></i>
-                    </div>
-                </div>
-                <button onclick="openModal('dispatchModal')" class="mt-3 w-full bg-white text-rose-700 hover:bg-rose-50 font-bold py-2.5 px-4 rounded-lg text-xs sm:text-sm shadow transition flex items-center justify-center gap-2 active:scale-[0.99]">
-                    <i class="fa-solid fa-magnifying-glass-minus text-sm"></i>
-                    <span>在庫を検索して引き当てる（持ち出し）</span>
-                </button>
-            </div>
-
-            <!-- 入庫 / 持ち込み -->
-            <div class="bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-xl p-4 sm:p-5 shadow-sm hover:shadow-md transition">
-                <div class="flex justify-between items-start mb-2 sm:mb-3">
-                    <div>
-                        <span class="bg-emerald-400/40 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full text-white">Pattern ① 入庫</span>
-                        <h2 class="text-base sm:text-xl font-bold mt-1">現場からの余剰器具・資材の持ち込み</h2>
-                        <p class="text-xs text-emerald-100 mt-0.5 sm:mt-1">現場で余った商品を倉庫に返納・持ち込み、在庫数を増やします。</p>
-                    </div>
-                    <div class="p-2 sm:p-3 bg-white/10 rounded-lg shrink-0">
-                        <i class="fa-solid fa-warehouse text-xl sm:text-2xl"></i>
-                    </div>
-                </div>
-                <button onclick="openModal('receiveModal')" class="mt-3 w-full bg-white text-emerald-800 hover:bg-emerald-50 font-bold py-2.5 px-4 rounded-lg text-xs sm:text-sm shadow transition flex items-center justify-center gap-2 active:scale-[0.99]">
-                    <i class="fa-solid fa-plus-circle text-sm"></i>
-                    <span>倉庫へ返納・持ち込む（入庫）</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Content Navigation Tabs -->
+        <!-- Inventory Master Data Table -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="border-b border-slate-200 flex bg-slate-50/50 overflow-x-auto whitespace-nowrap scrollbar-none">
-                <button id="tabItemsBtn" onclick="switchTab('items')" class="px-4 sm:px-6 py-3 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 border-b-2 border-transparent tab-active flex items-center gap-2 shrink-0">
-                    <i class="fa-solid fa-boxes-stacked"></i>
-                    <span>全商品統合テーブル (在庫一覧)</span>
-                </button>
-                <button id="tabLogsBtn" onclick="switchTab('logs')" class="px-4 sm:px-6 py-3 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 border-b-2 border-transparent flex items-center gap-2 shrink-0">
-                    <i class="fa-solid fa-list-ol"></i>
-                    <span>入出庫管理テーブル (履歴)</span>
-                </button>
+            <div class="px-4 py-3 bg-slate-100/80 border-b border-slate-200 flex justify-between items-center">
+                <span class="text-xs font-extrabold text-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-table-list text-blue-600 text-sm"></i>
+                    <span>全在庫リスト</span>
+                    <span id="filteredCountBadge" class="bg-blue-600 text-white font-extrabold px-2.5 py-0.5 rounded-full text-[11px]">263件表示</span>
+                </span>
+                <span class="text-[11px] text-slate-500 font-medium">※3文字以上検索時、該当型番は在庫0台でも「在庫切れ」として下表に自動抽出されます</span>
             </div>
 
-            <!-- Tab 1: 全商品マスターテーブル -->
-            <div id="tabItems" class="p-3 sm:p-6 space-y-3 sm:space-y-4">
-                <!-- Search & Filters -->
-                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-                    <div class="sm:col-span-4 relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs sm:text-sm"></i>
-                        <input type="text" id="itemSearchInput" oninput="renderItemsTable()" placeholder="型番、メーカー、品名、場所で検索..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    
-                    <div class="sm:col-span-3">
-                        <select id="categoryFilter" onchange="renderItemsTable()" class="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs sm:text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="all">すべての大分類</option>
-                            <option value="器具">大分類: 器具</option>
-                            <option value="安定器">大分類: 安定器</option>
-                            <option value="ランプ">大分類: ランプ</option>
-                            <option value="電材他">大分類: 電材他</option>
-                            <option value="三郷在庫">大分類: 三郷在庫</option>
-                        </select>
-                    </div>
-
-                    <div class="sm:col-span-3">
-                        <select id="stockFilter" onchange="renderItemsTable()" class="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs sm:text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="all">すべての在庫状態</option>
-                            <option value="inStock">在庫ありのみ</option>
-                            <option value="lowStock">要補充 (安全在庫以下)</option>
-                            <option value="outOfStock">在庫切れのみ</option>
-                        </select>
-                    </div>
-
-                    <div class="sm:col-span-2 flex justify-end">
-                        <button onclick="openModal('newItemModal')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-2 rounded-lg text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-1.5 active:scale-[0.98]">
-                            <i class="fa-solid fa-plus text-xs"></i>
-                            <span>新商品登録</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Product Table -->
-                <div class="overflow-x-auto rounded-lg border border-slate-200">
-                    <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[780px]">
-                        <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
-                            <tr>
-                                <th class="py-2.5 px-3">大分類</th>
-                                <th class="py-2.5 px-3">メーカー</th>
-                                <th class="py-2.5 px-3">型番</th>
-                                <th class="py-2.5 px-3">品名 / 仕様</th>
-                                <th class="py-2.5 px-3 text-center">保管場所</th>
-                                <th class="py-2.5 px-3 text-right">数量(台)</th>
-                                <th class="py-2.5 px-3 text-center">状態</th>
-                                <th class="py-2.5 px-3 text-center">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="itemsTableBody" class="divide-y divide-slate-200 bg-white">
-                            <!-- JS Dyn Rendering -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Tab 2: 入出庫管理テーブル (履歴) -->
-            <div id="tabLogs" class="p-3 sm:p-6 space-y-3 sm:space-y-4 hidden">
-                <div class="flex flex-col sm:flex-row justify-between gap-2.5">
-                    <div class="relative flex-1">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs sm:text-sm"></i>
-                        <input type="text" id="logSearchInput" oninput="renderLogsTable()" placeholder="型番、品名、大分類、担当者、現場名で検索..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    <div class="flex gap-2">
-                        <select id="logTypeFilter" onchange="renderLogsTable()" class="flex-1 sm:flex-none border border-slate-300 rounded-lg px-2.5 py-2 text-xs sm:text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="all">すべての種別</option>
-                            <option value="入庫">入庫 (返納/持ち込み)</option>
-                            <option value="出庫">出庫 (引き当て/持ち出し)</option>
-                        </select>
-                        <button onclick="exportLogsCSV()" class="bg-slate-700 hover:bg-slate-800 text-white font-medium px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5 whitespace-nowrap active:scale-[0.98]">
-                            <i class="fa-solid fa-file-csv text-xs"></i>
-                            <span>履歴CSV出力</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto rounded-lg border border-slate-200">
-                    <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[780px]">
-                        <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
-                            <tr>
-                                <th class="py-2.5 px-3">日時 (タイムスタンプ)</th>
-                                <th class="py-2.5 px-3 text-center">区分</th>
-                                <th class="py-2.5 px-3">大分類</th>
-                                <th class="py-2.5 px-3">型番</th>
-                                <th class="py-2.5 px-3">品名・メーカー</th>
-                                <th class="py-2.5 px-3 text-right">数量</th>
-                                <th class="py-2.5 px-3">担当者</th>
-                                <th class="py-2.5 px-3">現場名・備考</th>
-                            </tr>
-                        </thead>
-                        <tbody id="logsTableBody" class="divide-y divide-slate-200 bg-white">
-                            <!-- JS Dyn Rendering -->
-                        </tbody>
-                    </table>
-                </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[850px]">
+                    <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                        <tr>
+                            <th class="py-3 px-4">大分類</th>
+                            <th class="py-3 px-4">製品 (メーカー)</th>
+                            <th class="py-3 px-4">型番</th>
+                            <th class="py-3 px-4 text-right">台数</th>
+                            <th class="py-3 px-4 text-center">場所</th>
+                            <th class="py-3 px-4">補足</th>
+                            <th class="py-3 px-4 text-center">出品</th>
+                            <th class="py-3 px-4 text-center bg-blue-50/50">即時登録・引き当て</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryBody" class="divide-y divide-slate-200">
+                        <!-- JS Dynamic Rendering -->
+                    </tbody>
+                </table>
             </div>
         </div>
 
-    </main>
+    </div>
 
-
-    <!-- ==================== MODALS ==================== -->
-
-    <!-- 1. 自動引き当て（出庫）モーダル -->
+    <!-- Modals -->
+    <!-- 1. 出庫 モーダル -->
     <div id="dispatchModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col max-h-[92vh]">
             <div class="bg-rose-600 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
                 <h3 class="font-bold text-sm sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-truck-ramp-box"></i>
-                    <span>商品の引き当て・持ち出し（出庫）</span>
+                    <span>器具の引き当て・持ち出し（出庫）</span>
                 </h3>
                 <button onclick="closeModal('dispatchModal')" class="text-rose-100 hover:text-white text-lg sm:text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 sm:p-6 space-y-3.5 sm:space-y-4 overflow-y-auto">
-                <div class="bg-rose-50 border border-rose-200 rounded-lg p-2.5 text-xs text-rose-800">
-                    <i class="fa-solid fa-info-circle mr-1"></i>
-                    型番・品名を選択すると自動で現在の在庫数が参照され引き当たります。
-                </div>
-
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">対象商品の選択 <span class="text-rose-500">*</span></label>
-                    <select id="dispatchItemSelect" onchange="onDispatchItemChange()" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
-                        <option value="">-- 選択してください --</option>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">対象型番を選択 <span class="text-rose-500">*</span></label>
+                    <select id="dispatchItemSelect" onchange="onDispatchSelectChange()" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
                     </select>
                 </div>
-
-                <!-- 自動照会表示カード -->
-                <div id="dispatchStockBadge" class="hidden bg-slate-100 p-3 rounded-lg border border-slate-200 text-xs sm:text-sm space-y-1">
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">大分類 / メーカー:</span>
-                        <span id="dispatchCategoryMaker" class="font-bold text-slate-800">-</span>
-                    </div>
+                <div id="dispatchInfoBadge" class="hidden bg-slate-100 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
                     <div class="flex justify-between">
                         <span class="text-slate-500">現在庫数:</span>
-                        <span id="dispatchCurrentQty" class="font-bold text-slate-800">0</span>
+                        <span id="dispatchCurrentQty" class="font-bold text-slate-800">0 台</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-500">保管場所:</span>
                         <span id="dispatchLocation" class="font-bold text-slate-800">-</span>
                     </div>
                 </div>
-
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">引き当て（持ち出し）数量 <span class="text-rose-500">*</span></label>
-                    <input type="number" id="dispatchQty" min="1" value="1" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">持ち出し台数 <span class="text-rose-500">*</span></label>
+                    <input type="number" id="dispatchQty" value="1" min="1" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
                 </div>
-
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">担当者名 <span class="text-rose-500">*</span></label>
-                    <input type="text" id="dispatchWorker" placeholder="例: 三郷 太郎" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">使用現場名 / 備考</label>
-                    <input type="text" id="dispatchProject" placeholder="例: 新宿ビル改修工事" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
+                    <select id="dispatchWorkerSelect" onchange="onWorkerSelectChange('dispatch')" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500 mb-2 bg-white">
+                        <option value="">-- 担当者を選択 --</option>
+                    </select>
+                    <input type="text" id="dispatchWorkerCustom" placeholder="担当者名を入力してください" class="hidden w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
                 </div>
             </div>
             <div class="bg-slate-50 px-4 sm:px-6 py-3 border-t border-slate-200 flex justify-end gap-2">
@@ -347,48 +248,38 @@
         </div>
     </div>
 
-    <!-- 2. 余剰持込（入庫）モーダル -->
+    <!-- 2. 入庫 モーダル -->
     <div id="receiveModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col max-h-[92vh]">
             <div class="bg-emerald-600 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
                 <h3 class="font-bold text-sm sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-warehouse"></i>
-                    <span>商品の持ち込み・返納（入庫）</span>
+                    <span>器具の返納・持ち込み（入庫）</span>
                 </h3>
                 <button onclick="closeModal('receiveModal')" class="text-emerald-100 hover:text-white text-lg sm:text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 sm:p-6 space-y-3.5 sm:space-y-4 overflow-y-auto">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">持ち込み対象商品 <span class="text-emerald-500">*</span></label>
-                    <select id="receiveItemSelect" onchange="onReceiveItemChange()" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
-                        <option value="">-- 既存品目から選択 --</option>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">返納対象の型番を選択 <span class="text-emerald-500">*</span></label>
+                    <select id="receiveItemSelect" onchange="onReceiveSelectChange()" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
                     </select>
                 </div>
-
-                <div id="receiveStockBadge" class="hidden bg-slate-100 p-3 rounded-lg border border-slate-200 text-xs sm:text-sm space-y-1">
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">大分類 / メーカー:</span>
-                        <span id="receiveCategoryMaker" class="font-bold text-slate-800">-</span>
-                    </div>
+                <div id="receiveInfoBadge" class="hidden bg-slate-100 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
                     <div class="flex justify-between">
                         <span class="text-slate-500">現在の倉庫在庫数:</span>
-                        <span id="receiveCurrentQty" class="font-bold text-slate-800">0</span>
+                        <span id="receiveCurrentQty" class="font-bold text-slate-800">0 台</span>
                     </div>
                 </div>
-
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">持ち込み（返納）数量 <span class="text-emerald-500">*</span></label>
-                    <input type="number" id="receiveQty" min="1" value="1" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">返納・持ち込み台数 <span class="text-emerald-500">*</span></label>
+                    <input type="number" id="receiveQty" value="1" min="1" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
                 </div>
-
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">担当者名 <span class="text-emerald-500">*</span></label>
-                    <input type="text" id="receiveWorker" placeholder="例: 鈴木 一郎" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">返納元現場名 / 備考</label>
-                    <input type="text" id="receiveProject" placeholder="例: 渋谷現場からの余剰分" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
+                    <select id="receiveWorkerSelect" onchange="onWorkerSelectChange('receive')" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 mb-2 bg-white">
+                        <option value="">-- 担当者を選択 --</option>
+                    </select>
+                    <input type="text" id="receiveWorkerCustom" placeholder="担当者名を入力してください" class="hidden w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
                 </div>
             </div>
             <div class="bg-slate-50 px-4 sm:px-6 py-3 border-t border-slate-200 flex justify-end gap-2">
@@ -398,13 +289,13 @@
         </div>
     </div>
 
-    <!-- 3. 新規商品登録モーダル -->
+    <!-- 3. 新規登録モーダル -->
     <div id="newItemModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden">
             <div class="bg-blue-600 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
                 <h3 class="font-bold text-sm sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-plus-circle"></i>
-                    <span>新規商品マスター登録</span>
+                    <span>新規器具マスター登録</span>
                 </h3>
                 <button onclick="closeModal('newItemModal')" class="text-blue-100 hover:text-white text-lg sm:text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
@@ -421,35 +312,30 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">メーカー / 製品名</label>
-                        <input type="text" id="newMaker" placeholder="例: オーデリック, パナソニック" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">製品 (メーカー名)</label>
+                        <input type="text" id="newMaker" placeholder="例: オーデリック" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">型番 (Model No.) <span class="text-rose-500">*</span></label>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">型番 <span class="text-rose-500">*</span></label>
                     <input type="text" id="newModelCode" placeholder="例: OD261770" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">品名 / 仕様・備考</label>
-                    <input type="text" id="newItemName" placeholder="例: 2700K/φ150 ダウンライト" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">初期数量 (台)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">初期台数</label>
                         <input type="number" id="newQty" value="1" min="0" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">安全在庫数</label>
-                        <input type="number" id="newSafetyQty" value="1" min="0" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">場所</label>
+                        <input type="text" id="newLocation" placeholder="例: 風呂場" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">保管場所</label>
-                    <input type="text" id="newLocation" placeholder="例: 風呂場, 三郷 棚上段（右）" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">補足仕様</label>
+                    <input type="text" id="newNote" placeholder="例: 2700K/φ150" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
                 </div>
             </div>
             <div class="bg-slate-50 px-4 sm:px-6 py-3 border-t border-slate-200 flex justify-end gap-2">
@@ -459,225 +345,379 @@
         </div>
     </div>
 
-    <!-- 4. 管理者権限ポップアップ (CSV/Excel 取り込み・書き出し) -->
+    <!-- 4. 管理者メニュー モーダル -->
     <div id="adminModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[92vh]">
-            <div class="bg-slate-800 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-slate-800 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center shrink-0">
                 <h3 class="font-bold text-sm sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-user-shield text-amber-400"></i>
-                    <span>管理者メニュー (CSV / Excel 横断データ統合)</span>
+                    <span>管理者機能（入出力・データ・監査ログ）</span>
                 </h3>
                 <button onclick="closeModal('adminModal')" class="text-slate-400 hover:text-white text-lg sm:text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto">
+
+            <div class="p-4 sm:p-6 space-y-5 text-xs sm:text-sm overflow-y-auto">
                 
-                <!-- CSV/Excel インポート -->
-                <div class="border border-slate-200 rounded-xl p-3.5 sm:p-4 bg-slate-50/50 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h4 class="font-bold text-slate-800 text-xs sm:text-sm flex items-center gap-2">
-                            <i class="fa-solid fa-file-import text-blue-600"></i>
-                            <span>エクセル/CSVファイル インポート</span>
+                <!-- Section 1: 在庫データ管理 -->
+                <div class="border border-slate-200 rounded-xl p-3.5 bg-slate-50 space-y-2.5">
+                    <h4 class="font-bold text-slate-800 flex items-center gap-1.5 text-sm">
+                        <i class="fa-solid fa-boxes-stacked text-blue-600"></i> 在庫一覧データのインポート・エクスポート
+                    </h4>
+                    <p class="text-slate-500 text-xs">文字化け対策済み (UTF-8 BOM付き) CSVファイルで出力・取り込みが行えます。</p>
+                    <div class="flex flex-wrap items-center gap-2 pt-1">
+                        <button onclick="exportMasterCSV()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-csv"></i> 在庫CSVエクスポート
+                        </button>
+                        <button onclick="exportInventoryExcelCompatible()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel"></i> 在庫Excel用出力 (.csv)
+                        </button>
+                        <label class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition cursor-pointer flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-arrow-up"></i> 在庫インポート
+                            <input type="file" id="importInventoryFile" accept=".csv" onchange="importInventoryCSV(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Section 2: 担当一覧管理シート -->
+                <div class="border border-indigo-200 rounded-xl p-3.5 bg-indigo-50/50 space-y-2.5">
+                    <h4 class="font-bold text-indigo-900 flex items-center gap-1.5 text-sm">
+                        <i class="fa-solid fa-users-gear text-indigo-600"></i> 担当一覧管理シートのインポート・エクスポート
+                    </h4>
+                    <p class="text-indigo-700 text-xs">出庫・入庫時に選択する担当者マスターの編集・バックアップが行えます。</p>
+                    <div class="flex flex-wrap items-center gap-2 pt-1">
+                        <button onclick="exportWorkersCSV()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-csv"></i> 担当者CSVエクスポート
+                        </button>
+                        <button onclick="exportWorkersExcelCompatible()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel"></i> 担当者Excel用出力 (.csv)
+                        </button>
+                        <label class="bg-indigo-800 hover:bg-indigo-900 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition cursor-pointer flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-arrow-up"></i> 担当者インポート
+                            <input type="file" id="importWorkersFile" accept=".csv" onchange="importWorkersCSV(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Section 3: セキュリティ監査ログ -->
+                <div class="border border-amber-200 rounded-xl p-3.5 bg-amber-50/50 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-bold text-amber-900 flex items-center gap-1.5 text-sm">
+                            <i class="fa-solid fa-shield-halved text-amber-600"></i> セキュリティ監査ログ（インポート・エクスポート実施日時）
                         </h4>
-                        <span class="text-[10px] sm:text-xs text-slate-500">.csv, .xlsx に対応</span>
+                        <button onclick="clearAuditLogs()" class="text-xs text-rose-600 hover:underline font-bold">ログクリア</button>
                     </div>
-                    <p class="text-[11px] sm:text-xs text-slate-600 leading-relaxed">
-                        対象シート（器具・安定器・ランプ・電材他・三郷在庫）のデータを一括で取り込みます。<br>
-                        ※カラム定義: <span class="font-mono text-slate-800 bg-slate-200 px-1 rounded">大分類</span>, <span class="font-mono text-slate-800 bg-slate-200 px-1 rounded">製品</span>(メーカー), <span class="font-mono text-slate-800 bg-slate-200 px-1 rounded">型番</span>, <span class="font-mono text-slate-800 bg-slate-200 px-1 rounded">台</span>(数量), <span class="font-mono text-slate-800 bg-slate-200 px-1 rounded">場所</span>
-                    </p>
-                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                        <input type="file" id="importFileInput" accept=".csv, .xlsx, .xls" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                        <button onclick="importMasterFile()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg whitespace-nowrap shadow transition active:scale-[0.98]">
-                            取り込み実行
-                        </button>
+                    <div id="auditLogContainer" class="bg-white border border-amber-200 rounded-lg p-2.5 max-h-36 overflow-y-auto font-mono text-[11px] text-slate-700 space-y-1">
+                        <!-- JS Dynamic Audit Logs -->
                     </div>
                 </div>
 
-                <!-- CSV/Excel エクスポート -->
-                <div class="border border-slate-200 rounded-xl p-3.5 sm:p-4 bg-slate-50/50 space-y-3">
-                    <h4 class="font-bold text-slate-800 text-xs sm:text-sm flex items-center gap-2">
-                        <i class="fa-solid fa-file-export text-emerald-600"></i>
-                        <span>全5大分類 統合データ書き出し (エクスポート)</span>
-                    </h4>
-                    <p class="text-[11px] sm:text-xs text-slate-600">現在管理している器具・安定器・ランプ・電材他・三郷在庫の全商品を一括ファイル出力します。</p>
-                    <div class="flex flex-wrap gap-2 pt-1">
-                        <button onclick="exportMasterXLSX()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow active:scale-[0.98]">
-                            <i class="fa-solid fa-file-excel"></i>
-                            <span>全在庫 (.xlsx) 出力</span>
-                        </button>
-                        <button onclick="exportMasterCSV()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow active:scale-[0.98]">
-                            <i class="fa-solid fa-file-csv"></i>
-                            <span>全在庫 (.csv) 出力</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- リセット -->
-                <div class="border border-rose-200 rounded-xl p-3.5 sm:p-4 bg-rose-50/50 space-y-2">
-                    <h4 class="font-bold text-rose-800 text-xs sm:text-sm flex items-center gap-2">
-                        <i class="fa-solid fa-rotate-left"></i>
-                        <span>初期エクセルデータ（5シート統合）に戻す</span>
-                    </h4>
-                    <p class="text-[11px] sm:text-xs text-rose-600">手動編集内容をクリアし、添付エクセルの対象5シート（器具・安定器・ランプ・電材他・三郷在庫）の最新初期データにリセットします。</p>
-                    <button onclick="resetToDefaultData()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition active:scale-[0.98]">
-                        全5シートデータに復元
+                <!-- Section 4: システム初期化 -->
+                <div class="border border-rose-200 rounded-xl p-3.5 bg-rose-50 space-y-2">
+                    <h4 class="font-bold text-rose-800 text-sm">初期状態へ復元</h4>
+                    <p class="text-rose-600 text-xs">ローカル変更を破棄し、初期の全263型番・800台のマスターデータに復元します。</p>
+                    <button onclick="resetToMaster()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs transition shadow">
+                        全データ初期化
                     </button>
                 </div>
 
             </div>
-            <div class="bg-slate-50 px-4 sm:px-6 py-3 border-t border-slate-200 flex justify-end">
-                <button onclick="closeModal('adminModal')" class="px-4 py-2 bg-slate-800 text-white font-bold rounded-lg text-xs sm:text-sm">閉じる</button>
+            <div class="bg-slate-50 px-4 sm:px-6 py-3 border-t border-slate-200 flex justify-end shrink-0">
+                <button onclick="closeModal('adminModal')" class="px-4 py-2 bg-slate-800 text-white font-bold rounded-lg text-xs">閉じる</button>
             </div>
         </div>
     </div>
 
-    <!-- Toast Container -->
-    <div id="toastContainer" class="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col gap-2 pointer-events-none"></div>
+    <!-- Toast Notification -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <script>
-        // 添付Excelの「器具」「安定器」「ランプ」「電材他」「三郷在庫」各シートの実データ統合リスト
-        const initialItems = [
-            // --- 器具 ---
-            { id: 'k-1', category: '器具', maker: 'オーデリック', code: 'OD261770', name: '2700K/φ150', qty: 7, safetyQty: 1, location: '風呂場' },
-            { id: 'k-2', category: '器具', maker: 'オーデリック', code: 'OD261745', name: '5000K/φ125', qty: 1, safetyQty: 1, location: '風呂場' },
-            { id: 'k-3', category: '器具', maker: 'オーデリック', code: 'OD261773', name: '5000K/φ150', qty: 1, safetyQty: 1, location: '風呂場' },
-            { id: 'k-4', category: '器具', maker: 'オーデリック', code: 'OD261769', name: '5000K/φ150', qty: 2, safetyQty: 1, location: '風呂場' },
-            { id: 'k-5', category: '器具', maker: 'オーデリック', code: 'OD261894', name: '2700K/φ100', qty: 0, safetyQty: 1, location: '風呂場' },
-            { id: 'k-6', category: '器具', maker: 'オーデリック', code: 'OA075595', name: 'φ220→φ200', qty: 1, safetyQty: 1, location: '風呂場' },
-            { id: 'k-7', category: '器具', maker: 'オーデリック', code: 'OA075596', name: 'φ195→φ175', qty: 1, safetyQty: 1, location: '風呂場' },
-            { id: 'k-8', category: '器具', maker: '遠藤照明', code: 'ERX9689N', name: '昼白色/リニア L：1200タイプ', qty: 3, safetyQty: 1, location: '風呂場' },
-            { id: 'k-9', category: '器具', maker: '遠藤照明', code: 'RAD415WW', name: '温白色/FPL55Wタイプ', qty: 4, safetyQty: 1, location: '風呂場' },
-            { id: 'k-10', category: '器具', maker: '遠藤照明', code: 'ERD2527W', name: '電球色/Φ200', qty: 1, safetyQty: 1, location: '風呂場' },
-            { id: 'k-11', category: '器具', maker: '遠藤照明', code: 'ERD2057W', name: '電球色/Φ200/軒下', qty: 2, safetyQty: 1, location: '風呂場' },
-            { id: 'k-12', category: '器具', maker: '遠藤照明', code: 'ERD4258W', name: '3500K/φ150', qty: 1, safetyQty: 1, location: '風呂場' },
+        // デフォルト担当者一覧
+        const initialWorkers = ["吉原", "栗木", "風間", "比嘉", "飯野", "須黒", "石川", "秋山"];
 
-            // --- 安定器 ---
-            { id: 'a-1', category: '安定器', maker: '三菱', code: 'LT75K1KYA100-9', name: '安定器', qty: 1, safetyQty: 1, location: '風呂場' },
-            { id: 'a-2', category: '安定器', maker: '岩崎', code: 'LE070035HSZ1/2.4-A1', name: '電源ユニット', qty: 6, safetyQty: 2, location: '風呂場' },
-            { id: 'a-3', category: '安定器', maker: 'フィリップス', code: 'HID-PV070 CDM100-242/A', name: '電子安定器', qty: 0, safetyQty: 1, location: '風呂場' },
-            { id: 'a-4', category: '安定器', maker: 'フィリップス', code: 'EH-S150CDM100-242A', name: '電子安定器', qty: 0, safetyQty: 1, location: '風呂場' },
-            { id: 'a-5', category: '安定器', maker: 'モデュレックス', code: 'E053CC12002', name: '安定器', qty: 1, safetyQty: 1, location: '風呂場' },
-            { id: 'a-6', category: '安定器', maker: 'トライエンジニアリング', code: 'LF9840F', name: '高効率安定器', qty: 4, safetyQty: 1, location: 'ラック中段' },
-            { id: 'a-7', category: '安定器', maker: 'DNL', code: 'ERC64(64~42)', name: '電子安定器', qty: 1, safetyQty: 1, location: 'ラック中段' },
-            { id: 'a-8', category: '安定器', maker: 'DNL', code: 'ERC42(42~25)', name: '電子安定器', qty: 1, safetyQty: 1, location: 'ラック中段' },
-            { id: 'a-9', category: '安定器', maker: '藤井電機工業', code: 'EEHG-351/24AB1', name: '安定器', qty: 1, safetyQty: 1, location: '伊佐' },
-            { id: 'a-10', category: '安定器', maker: '岩崎', code: 'H4CC2A352', name: '安定器', qty: 0, safetyQty: 1, location: 'ラック下段' },
-
-            // --- ランプ ---
-            { id: 'l-1', category: 'ランプ', maker: 'パナソニック', code: 'BF110V120WH/D', name: 'ハイビーム電球', qty: 1, safetyQty: 1, location: '床３段目' },
-            { id: 'l-2', category: 'ランプ', maker: 'PHILIPS', code: 'CDM-T150W/830 G12', name: 'マスターカラーCDM-T', qty: 4, safetyQty: 1, location: '床３段目' },
-            { id: 'l-3', category: 'ランプ', maker: 'FHILIPS', code: 'CDM-T150W/942', name: 'マスターカラーCDM-T', qty: 6, safetyQty: 2, location: '床３段目' },
-            { id: 'l-4', category: 'ランプ', maker: 'PHILIPS', code: 'CDM-T70W/830 G12', name: 'マスターカラー', qty: 0, safetyQty: 1, location: '床３段目' },
-            { id: 'l-5', category: 'ランプ', maker: '東芝', code: 'EFA15EL/11-Z', name: '電球形蛍光ランプ', qty: 2, safetyQty: 1, location: '床３段目' },
-            { id: 'l-6', category: 'ランプ', maker: 'NEC', code: 'EFA15EN/12-C5', name: '電球形蛍光ランプ', qty: 10, safetyQty: 2, location: '床３段目' },
-            { id: 'l-7', category: 'ランプ', maker: '日立', code: 'FDL27EX-L', name: 'パラライト 27形 電球色', qty: 6, safetyQty: 2, location: '床３段目' },
-            { id: 'l-8', category: 'ランプ', maker: '日立', code: 'FG-1P', name: '点灯管 (グロースタータ)', qty: 33, safetyQty: 10, location: 'ラック下段' },
-            { id: 'l-9', category: 'ランプ', maker: 'Panasonic', code: 'FG-4P', name: '点灯管', qty: 15, safetyQty: 5, location: 'ラック下段' },
-            { id: 'l-10', category: 'ランプ', maker: 'NEC', code: 'FHP32EW', name: 'コンパクト形蛍光ランプ', qty: 8, safetyQty: 2, location: 'ラック下段' },
-            { id: 'l-11', category: 'ランプ', maker: '日立', code: 'FHP36EX-D', name: 'コンパクト形蛍光ランプ 昼光色', qty: 1, safetyQty: 1, location: 'ラック下段 奥' },
-            { id: 'l-12', category: 'ランプ', maker: '日立', code: 'FHP36EX-W', name: 'コンパクト形蛍光ランプ 白色', qty: 1, safetyQty: 1, location: 'ラック下段 奥' },
-            { id: 'l-13', category: 'ランプ', maker: 'ウシオ', code: 'LDC2L-G-E17/D/27/3', name: 'LEDシャンデリア電球', qty: 20, safetyQty: 5, location: '風呂場' },
-            { id: 'l-14', category: 'ランプ', maker: 'パナソニック', code: 'FL20SS・EDK/18-PL', name: '直管蛍光灯 20形', qty: 1, safetyQty: 1, location: 'ラック下段 奥' },
-            { id: 'l-15', category: 'ランプ', maker: '遠藤照明', code: 'ERK9708S', name: 'LEDランプ用器具パーツ', qty: 2, safetyQty: 1, location: 'ラック最上段' },
-
-            // --- 電材他 ---
-            { id: 'e-1', category: '電材他', maker: 'JIMBO', code: 'WJP-1', name: 'Jワイド コンセントプレート', qty: 6, safetyQty: 2, location: '風呂場' },
-            { id: 'e-2', category: '電材他', maker: 'JIMBO', code: 'WJD-3', name: 'スイッチプレート 3連', qty: 5, safetyQty: 2, location: '風呂場' },
-            { id: 'e-3', category: '電材他', maker: 'JIMBO', code: 'WJD-1', name: 'スイッチプレート 1連', qty: 1, safetyQty: 1, location: '風呂場' },
-            { id: 'e-4', category: '電材他', maker: 'JIMBO', code: 'WJP-2', name: 'プレート 2連', qty: 1, safetyQty: 1, location: '風呂場' },
-            { id: 'e-5', category: '電材他', maker: 'ナニワ', code: 'ホルダー (40W形、安定器なし）', name: '蛍光管ホルダー', qty: 3, safetyQty: 1, location: 'ラック最上段' },
-            { id: 'e-6', category: '電材他', maker: 'Panasonic', code: 'FL9204018', name: '誘導灯用冷陰極蛍光灯 (CF200T4EN/C)', qty: 1, safetyQty: 1, location: 'ラック下段' },
-            { id: 'e-7', category: '電材他', maker: 'Panasonic', code: 'FL9204019', name: '誘導灯用冷陰極蛍光灯 (CF200T4EN)', qty: 1, safetyQty: 1, location: 'ラック下段' },
-            { id: 'e-8', category: '電材他', maker: 'Panasonic', code: 'FK91220', name: '誘導灯用リニューアルプレート', qty: 2, safetyQty: 1, location: 'ラック下段' },
-            { id: 'e-9', category: '電材他', maker: '河村電器', code: 'ZCS 2P2E20-30', name: '漏電遮断器', qty: 6, safetyQty: 2, location: 'ラック下段' },
-            { id: 'e-10', category: '電材他', maker: 'DNL', code: 'LCF600', name: 'ラインコンセント', qty: 1, safetyQty: 1, location: 'ラック下段' },
-
-            // --- 三郷在庫 ---
-            { id: 'm-1', category: '三郷在庫', maker: 'ホタルクス', code: 'FL40SD', name: '直管スタータ形 40形', qty: 0, safetyQty: 2, location: '三郷' },
-            { id: 'm-2', category: '三郷在庫', maker: 'ナニワ', code: 'KS-401AC', name: 'ソケットホルダー', qty: 15, safetyQty: 3, location: '三郷' },
-            { id: 'm-3', category: '三郷在庫', maker: '岩崎', code: 'F14/W', name: '投光器フック・金具', qty: 1, safetyQty: 1, location: '三郷' },
-            { id: 'm-4', category: '三郷在庫', maker: '日立', code: 'FL32SEX75-KS', name: '直管蛍光灯 32形', qty: 8, safetyQty: 2, location: '三郷 棚上段（右）' },
-            { id: 'm-5', category: '三郷在庫', maker: '日立', code: 'FL30SEX75-KS', name: '直管蛍光灯 30形', qty: 3, safetyQty: 1, location: '三郷 棚上段（右）' },
-            { id: 'm-6', category: '三郷在庫', maker: 'NEC', code: 'FL32SEX-D-HG', name: '直管蛍光灯 32形 昼光色', qty: 5, safetyQty: 2, location: '三郷 棚上段（右）' },
-            { id: 'm-7', category: '三郷在庫', maker: 'NEC', code: 'FL30SEX-KD', name: '直管蛍光灯 30形', qty: 5, safetyQty: 2, location: '三郷 棚上段（右）' },
-            { id: 'm-8', category: '三郷在庫', maker: 'パナソニック', code: 'FL40SSEX-L/37F2', name: '直管蛍光灯 40形 電球色', qty: 2, safetyQty: 1, location: '三郷 棚上段（右）' },
-            { id: 'm-9', category: '三郷在庫', maker: '日立', code: 'FLR40EX-N/M/36A', name: 'ラピッド蛍光灯 40形 昼白色', qty: 24, safetyQty: 5, location: '三郷 棚上段（右）' }
+        // 名寄せ・クレンジング済みマスターデータ (全263件完全保持)
+        const initialMasterData = [
+            ["器具","オーデリック","OD261770",7,"風呂場","2700K/φ150",""],
+            ["器具","オーデリック","OD261745",1,"風呂場","5000K/φ125",""],
+            ["器具","オーデリック","OD261773",1,"風呂場","5000K/φ150",""],
+            ["器具","オーデリック","OD261769",2,"風呂場","5000K/φ150",""],
+            ["器具","オーデリック","OD261894",0,"風呂場","2700K/φ100",""],
+            ["器具","オーデリック","OA075595",1,"風呂場","φ220→φ200",""],
+            ["器具","オーデリック","OA075596",1,"風呂場","φ195→φ175",""],
+            ["器具","遠藤照明","ERX9689N",3,"風呂場","昼白色/リニア  L：1200タイプ",""],
+            ["器具","遠藤照明","RAD415WW",4,"風呂場","温白色/FPL55Wタイプ",""],
+            ["器具","遠藤照明","ERD2527W",1,"風呂場","電球色/Φ200",""],
+            ["器具","遠藤照明","ERD2057W",2,"風呂場","電球色/Φ200/軒下","〇1"],
+            ["器具","遠藤照明","ERD4258W",1,"風呂場","3500K/φ125",""],
+            ["器具","遠藤照明","ERD3713W",1,"風呂場","4000K/φ150/無線",""],
+            ["器具","遠藤照明","ERD3715W",1,"風呂場","3000K/φ150/無線",""],
+            ["器具","遠藤照明","ERD3805W",1,"風呂場","3000K/φ150/非調光",""],
+            ["器具","遠藤照明","ERD3685W",1,"風呂場","3000K/φ150/PWM",""],
+            ["器具","遠藤照明","ERD3686W",1,"風呂場","3000K/φ150/PWM",""],
+            ["器具","遠藤照明","ERD3682W",1,"風呂場","3500K/φ150/PWM",""],
+            ["器具","遠藤照明","ERD3870W",2,"風呂場","3000K/φ125/非調光",""],
+            ["器具","遠藤照明","ERD3873W",1,"風呂場","3000K/φ125/非調光",""],
+            ["器具","遠藤照明","ERD3878W",1,"風呂場","3000K/φ125/非調光",""],
+            ["器具","遠藤照明","ERD3669W",1,"風呂場","3500K/φ125/PWM",""],
+            ["器具","遠藤照明","ERD3670W",1,"風呂場","3500K/φ125/PWM",""],
+            ["器具","遠藤照明","ERD3673W",1,"風呂場","3000K/φ125/PWM",""],
+            ["器具","遠藤照明","ERD3679W",1,"風呂場","3000K/φ125/PWM",""],
+            ["器具","遠藤照明","ERD3143W",1,"風呂場","3000K/φ125/非調光",""],
+            ["器具","遠藤照明","ERD3144W",1,"風呂場","3000K/φ125/非調光",""],
+            ["器具","遠藤照明","ERD3139W",1,"風呂場","4000K/φ125/非調光",""],
+            ["器具","遠藤照明","ERD3850W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD3852W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD3853W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD3854W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD3858W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD3863W",1,"風呂場","3500K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD3865W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD3653W",1,"風呂場","3000K/φ100/PWM",""],
+            ["器具","遠藤照明","ERD3655W",1,"風呂場","3000K/φ100/PWM",""],
+            ["器具","遠藤照明","ERD3661W",1,"風呂場","3000K/φ100/PWM",""],
+            ["器具","遠藤照明","ERD2132W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2139W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2432W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2437W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2438W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2440W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2442W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2449W",1,"風呂場","3500K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2452W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2454W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2455W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2457W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2458W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2144W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2145W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2148W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2153W",1,"風呂場","3500K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2155W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2157W",1,"風呂場","3000K/φ100/非調光",""],
+            ["器具","遠藤照明","ERD2158W",1,"風呂場","3000K/φ100/非調光",""],
+            ["安定器","三菱","LT75K1KYA100-9",1,"風呂場","",""],
+            ["安定器","岩崎","LE070035HSZ1/2.4-A1",6,"風呂場","",""],
+            ["安定器","フィリップス","HID-PV070　CDM100-242/A",0,"風呂場","",""],
+            ["安定器","フィリップス","EH-S150CDM100-242A",0,"風呂場","",""],
+            ["安定器","モデュレックス","E053CC12002",1,"風呂場","",""],
+            ["安定器","トライエンジニアリング","LF9840F",4,"ラック中段","",""],
+            ["安定器","DNL","ERC64(64~42)",1,"ラック中段","",""],
+            ["安定器","DNL","ERC42(42~25)",1,"ラック中段","",""],
+            ["安定器","不明","定番安定器各種",0,"ラック中段","",""],
+            ["安定器","藤井電機工業","EEHG-351/24AB1",1,"伊佐","",""],
+            ["安定器","岩崎","H4CC2A352",0,"ラック下段","",""],
+            ["電材他","JIMBO","WJP-1",6,"風呂場","",""],
+            ["電材他","JIMBO","WJD-3",5,"風呂場","",""],
+            ["電材他","JIMBO","WJD-1",1,"風呂場","",""],
+            ["電材他","JIMBO","WJP-2",1,"風呂場","",""],
+            ["電材他","JIMBO","WJD-NT",1,"風呂場","",""],
+            ["電材他","JIMBO","WJD-333",2,"風呂場","",""],
+            ["電材他","ナニワ","ホルダー　(40W形、安定器なし）",3,"ラック最上段","",""],
+            ["電材他","","ソケット各種",0,"ラック下段","",""],
+            ["電材他","Panasonic","FL9204018 　(CF200T4EN/C)",1,"ラック下段","",""],
+            ["電材他","Panasonic","FL9204019　(CF200T4EN)",1,"ラック下段","",""],
+            ["電材他","Panasonic","FL9204013　(CF200T4EN/C1)",0,"ラック下段","",""],
+            ["電材他","Panasonic","FK91220",2,"ラック下段","",""],
+            ["電材他","Panasonic","FK20005",1,"風呂場","",""],
+            ["電材他","Panasonic","FK20000",1,"風呂場","",""],
+            ["電材他","東亜産業","抗原検査ペン",2,"ラック下段","",""],
+            ["電材他","アイホン","IE-NXUG",0,"風呂場","",""],
+            ["電材他","DNL","LCF600 ラインコンセント",1,"ラック下段","",""],
+            ["電材他","河村電器","ZCS 2P2E20-30",6,"ラック下段","",""],
+            ["電材他","ナニワ","ホルダー　(110W形、安定器なし）",1,"ラック下段","",""],
+            ["電材他","東芝","防湿・防雨形蛍光灯器具(FL20W×1)",1,"ラック下段","",""],
+            ["電材他","東芝","防湿・防雨形蛍光灯器具(FL20W×2)",1,"ラック下段","",""],
+            ["電材他","日立","防湿・防雨形蛍光灯器具(FL20W×1)",1,"ラック下段","",""],
+            ["電材他","日立","防湿・防雨形蛍光灯器具(FL20W×2)",1,"ラック下段","",""],
+            ["電材他","東芝","防雨型ベースライト(FHF32W×2)",1,"ラック下段","",""],
+            ["電材他","パナソニック","非常用照明器具(FF41803J)",2,"ラック下段","",""],
+            ["電材他","パナソニック","非常用照明器具(FSG42001F)",1,"ラック下段","",""],
+            ["電材他","パナソニック","防湿・防雨形蛍光灯器具(FW42315)",1,"ラック下段","",""],
+            ["電材他","パナソニック","防湿・防雨形蛍光灯器具(FW21327)",1,"ラック下段","",""],
+            ["電材他","パナソニック","防湿・防雨形蛍光灯器具(FW21317)",1,"ラック下段","",""],
+            ["電材他","パナソニック","防湿・防雨形蛍光灯器具(FW11317)",1,"ラック下段","",""],
+            ["電材他","パナソニック","LED非常用照明器具(NNFB91605J)",2,"ラック下段","",""],
+            ["電材他","パナソニック","LED非常用照明器具(NNFB93605J)",2,"ラック下段","",""],
+            ["電材他","パナソニック","LED誘導灯(FA20312LE1)",1,"ラック下段","",""],
+            ["電材他","パナソニック","LED誘導灯(FA10312LE1)",1,"ラック下段","",""],
+            ["電材他","パナソニック","LED誘導灯(FA10322LE1)",1,"ラック下段","",""],
+            ["電材他","パナソニック","LED誘導灯(FA20322LE1)",1,"ラック下段","",""],
+            ["電材他","パナソニック","LED誘導灯(FA40312LE1)",1,"ラック下段","",""],
+            ["電材他","パナソニック","LED誘導灯(FA40322LE1)",1,"ラック下段","",""],
+            ["電材他","パナソニック","誘導灯表示板(FK20000)",1,"ラック下段","",""],
+            ["電材他","パナソニック","誘導灯表示板(FK20005)",1,"ラック下段","",""],
+            ["電材他","パナソニック","誘導灯表示板(FK10000)",1,"ラック下段","",""],
+            ["電材他","パナソニック","誘導灯表示板(FK10005)",1,"ラック下段","",""],
+            ["ランプ","パナソニック","BF110V120WH/D",1,"床３段目","",""],
+            ["ランプ","PHILIPS","CDM-T150W/830 G12",4,"床３段目","",""],
+            ["ランプ","FHILIPS","CDM-T150W/942",6,"床３段目","",""],
+            ["ランプ","PHILIPS","CDM-T70W/830 G12",0,"床３段目","",""],
+            ["ランプ","東芝","EFA15EL/11-Z",2,"床３段目","",""],
+            ["ランプ","NEC","EFA15EN/12-C5",10,"床３段目","",""],
+            ["ランプ","Panasonic","EFD15EL/10H2",0,"床３段目","",""],
+            ["ランプ","Panasonic","EFD15EL/10H2",0,"床３段目","",""],
+            ["ランプ","Panasonic","EFD15EL/12",0,"床３段目","",""],
+            ["ランプ","Panasonic","EFD15EN/12",1,"床３段目","",""],
+            ["ランプ","NEC","EFD25EL/20",0,"床３段目","",""],
+            ["ランプ","NEC","EFG13EN",1,"床３段目","",""],
+            ["ランプ","Panasonic","EFR15EL/12",0,"床３段目","",""],
+            ["ランプ","日立","FDL27EX-L",6,"床３段目","",""],
+            ["ランプ","日立","FG-1P",33,"ラック下段","",""],
+            ["ランプ","Panasonic","FG-4P",15,"ラック下段","みつからず",""],
+            ["ランプ","NEC","FHP32EW",8,"ラック下段","",""],
+            ["ランプ","日立","FHP32EW-J",1,"ラック下段","",""],
+            ["ランプ","日立","FHP32ED-J",1,"ラック下段","",""],
+            ["ランプ","日立","FHP32EN-J",1,"ラック下段","",""],
+            ["ランプ","日立","FHP45EW",1,"ラック下段","",""],
+            ["ランプ","日立","FHP45EN",1,"ラック下段","",""],
+            ["ランプ","日立","FHP45ED",1,"ラック下段","",""],
+            ["ランプ","日立","FHP45EL",1,"ラック下段","",""],
+            ["ランプ","日立","FHP36EX-N",1,"ラック下段","",""],
+            ["ランプ","日立","FHP36EX-D",1,"ラック下段","",""],
+            ["ランプ","日立","FHP36EX-W",1,"ラック下段","",""],
+            ["ランプ","三菱","FPL55EX-WW",1,"ラック下段","",""],
+            ["ランプ","日立","FL20SW-B",0,"ラック下段","",""],
+            ["ランプ","ウシオ","LDC2L-G-E17/D/27/3",20,"風呂場","","〇在庫あり"],
+            ["ランプ","パナソニック","FL20SS・EDK/18-PL",1,"ラック下段","",""],
+            ["ランプ","遠藤照明","ERK9708S",2,"ラック最上段","",""],
+            ["ランプ","オーデリック","No.320C",1,"ラック最上段","",""],
+            ["ランプ","オーデリック","No.340B",0,"ラック最上段","※１本須黒さん所持",""],
+            ["ランプ","日立","FL10W-B",2,"ラック下段","",""],
+            ["ランプ","三菱","HF300X",0,"カーペット上","",""],
+            ["ランプ","三菱","HF250X",0,"カーペット上","",""],
+            ["ランプ","三菱","HF200X",1,"カーペット上","",""],
+            ["ランプ","日立","HF100X",1,"カーペット上","",""],
+            ["ランプ","三菱","BHF200/220V300W",2,"カーペット上","",""],
+            ["ランプ","パナソニック","NH360FL/S",1,"ラック下段","",""],
+            ["ランプ","岩崎","MT150FSW",1,"ラック下段(外部)","",""],
+            ["ランプ","岩崎","MT70FCE-LW/S-2",1,"ラック下段(外部)","",""],
+            ["ランプ","ELPA","G-73H(W)",1,"ラック下段(外部)","",""],
+            ["ランプ","岩崎","M100LSH/BUP",1,"ラック下段(外部)","",""],
+            ["ランプ","岩崎","M250LSH/2/BUS",1,"ラック下段(外部)","",""],
+            ["ランプ","岩崎","M400LSH/U",1,"ラック下段(外部)","",""],
+            ["ランプ","岩崎","M400LSH/2/BUS",1,"ラック下段(外部)","",""],
+            ["ランプ","岩崎","M1000LS/BH",1,"ラック下段(外部)","",""],
+            ["ランプ","日立","FHF32EX-N-H",25,"ラック中段","",""],
+            ["ランプ","パナソニック","FHF32EX-N-HF2D",25,"ラック中段","",""],
+            ["ランプ","日立","FLR40SEX-N/M/36-A",25,"ラック中段","",""],
+            ["ランプ","パナソニック","FLR40S・W/M-X・36R",25,"ラック中段","",""],
+            ["ランプ","パナソニック","FLR40S・N/M-X・36R",25,"ラック中段","",""],
+            ["ランプ","日立","FLR40SW/M/36-B",25,"ラック中段","",""],
+            ["ランプ","東芝","FLR40S・D/M-X・36",25,"ラック中段","",""],
+            ["ランプ","日立","FL40SS・W/37-B",25,"ラック中段","",""],
+            ["ランプ","パナソニック","FL40SS・W/37R",25,"ラック中段","",""],
+            ["ランプ","東芝","FL40S・D",25,"ラック中段","",""],
+            ["ランプ","パナソニック","FL40S・D",25,"ラック中段","",""],
+            ["ランプ","NEC","FL40SBL",1,"ラック中段","",""],
+            ["ランプ","パナソニック","FL40SBL",1,"ラック中段","",""],
+            ["ランプ","東芝","FL40SBL",1,"ラック中段","",""],
+            ["ランプ","NEC","FL20SBL",2,"ラック中段","",""],
+            ["ランプ","パナソニック","FL20SBL",2,"ラック中段","",""],
+            ["ランプ","東芝","FL20SBL",2,"ラック中段","",""],
+            ["ランプ","日立","FL20SBL",2,"ラック中段","",""],
+            ["ランプ","パナソニック","FL15BL",2,"ラック中段","",""],
+            ["ランプ","東芝","FL15BL",2,"ラック中段","",""],
+            ["ランプ","日立","FL10BL",2,"ラック中段","",""],
+            ["ランプ","パナソニック","FL10BL",2,"ラック中段","",""],
+            ["ランプ","NEC","FL6BL",2,"ラック中段","",""],
+            ["ランプ","パナソニック","FL6BL",2,"ラック中段","",""],
+            ["ランプ","東芝","FL4BL",2,"ラック中段","",""],
+            ["ランプ","日立","FL4BL",2,"ラック下段","",""],
+            ["三郷在庫","ホタルクス","FL40SD",0,"三郷","",""],
+            ["三郷在庫","ナニワ","KS-401AC",15,"三郷","１台秋山さん保有",""],
+            ["三郷在庫","岩崎","F14/W",1,"三郷","",""],
+            ["三郷在庫","日立","FL32SEX75-KS",8,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","FL30SEX75-KS",3,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL32SEX-D-HG",5,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL30SEX-KD",5,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","FL30S-WX-NF2",1,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","FL30S-EX-N-H",1,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","FL40SSEX-L/37F2",2,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","FLR40SEX-WW/M/36B",2,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","FL40SSEX-N/37/F2",1,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","FL35SSEX-D-HGU",1,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","FL40SSE/37R",3,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","FL40SD",3,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL40SPO",5,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","FLR40EX-N/M/36A",24,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL40SEX-L-HG",6,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL40SVI",14,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","FLR40EX-D/M/36A",2,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL65SSEX-D/58-HG",0,"三郷　棚上段（右）","ビニールテープ巻内1本は捨てる","9本だした"],
+            ["三郷在庫","看板ホルダー","100V20W",40,"三郷棚下段","",""],
+            ["三郷在庫","看板ホルダー","100V30W",20,"三郷棚下段","",""],
+            ["三郷在庫","看板ホルダー","100V40W",21,"三郷棚下段","",""],
+            ["三郷在庫","看板ホルダー","200V30W",2,"三郷棚下段","",""],
+            ["三郷在庫","看板ホルダー","200V40W",15,"三郷棚下段","",""],
+            ["三郷在庫","看板ソケット","ソケット部のみ",12,"三郷棚下段","",""],
+            ["三郷在庫","看板ソケット","防水ソケット",0,"三郷棚下段","",""],
+            ["三郷在庫","看板ソケット","防水ソケット(リード線付)",0,"三郷棚下段","",""],
+            ["三郷在庫","東芝","GL15",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","GL15",2,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","GL15",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","GL15",1,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","GL20",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","GL20",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","GL20",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","GL20",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","GL30",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","GL30",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","GL30",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","GL30",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","GL6",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","GL6",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","GL6",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","GL6",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","GL10",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","GL10",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","GL10",0,"三郷t棚上段（右）","",""],
+            ["三郷在庫","パナソニック","GL10",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","GL4",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","GL4",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","GL4",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","GL4",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","FL10BL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","FL10BL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL10BL",0,"三郷1棚上段（右）","",""],
+            ["三郷在庫","パナソニック","FL10BL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","FL15BL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","FL15BL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL15BL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","FL15BL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","FL20SBL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","FL20SBL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL20SBL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","FL20SBL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","FL30SBL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","FL30SBL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL30SBL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","FL30SBL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","FL40SBL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","日立","FL40SBL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL40SBL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","FL40SBL",0,"三郷　棚上段（右）","",""]
         ];
 
-        const initialLogs = [
-            {
-                id: 'log-1',
-                timestamp: '2026-08-31 09:30:00',
-                type: '出庫',
-                category: '器具',
-                code: 'OD261770',
-                name: 'オーデリック 2700K/φ150',
-                qty: 2,
-                worker: '佐藤 健',
-                project: '三郷新築現場'
-            },
-            {
-                id: 'log-2',
-                timestamp: '2026-08-31 11:15:00',
-                type: '入庫',
-                category: 'ランプ',
-                code: 'LDC2L-G-E17/D/27/3',
-                name: 'ウシオ LEDシャンデリア電球',
-                qty: 10,
-                worker: '田中 義雄',
-                project: '改修現場余剰分返納'
-            }
-        ];
-
-        // Valid Categories (「場所不明」「Sheet1」は除外)
-        const VALID_CATEGORIES = ['器具', '安定器', 'ランプ', '電材他', '三郷在庫'];
-
-        // State variables
-        let items = JSON.parse(localStorage.getItem('misato_all_items_v2')) || initialItems;
-        let logs = JSON.parse(localStorage.getItem('misato_all_logs_v2')) || initialLogs;
+        let masterData = JSON.parse(localStorage.getItem('misato_master_v11')) || initialMasterData;
+        let workerList = JSON.parse(localStorage.getItem('misato_workers_v1')) || initialWorkers;
+        let auditLogs = JSON.parse(localStorage.getItem('misato_audit_logs_v1')) || [];
 
         window.onload = function() {
-            renderCategoryBadges();
-            renderItemsTable();
-            renderLogsTable();
-            updateKPIs();
-            populateSelectOptions();
+            populateSelects();
+            updateSummary();
+            renderTable();
+            renderLastUpdatedDisplay();
+            renderAuditLogs();
         };
 
         function saveData() {
-            localStorage.setItem('misato_all_items_v2', JSON.stringify(items));
-            localStorage.setItem('misato_all_logs_v2', JSON.stringify(logs));
-            updateKPIs();
-            renderCategoryBadges();
-            populateSelectOptions();
+            localStorage.setItem('misato_master_v11', JSON.stringify(masterData));
+            localStorage.setItem('misato_workers_v1', JSON.stringify(workerList));
+            updateSummary();
+            populateSelects();
         }
 
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            
-            let bgClass = 'bg-slate-800 text-white';
-            let icon = '<i class="fa-solid fa-circle-info text-blue-400"></i>';
-            if (type === 'success') {
-                bgClass = 'bg-emerald-700 text-white';
-                icon = '<i class="fa-solid fa-circle-check text-emerald-300"></i>';
-            } else if (type === 'error') {
-                bgClass = 'bg-rose-700 text-white';
-                icon = '<i class="fa-solid fa-circle-xmark text-rose-300"></i>';
-            }
-
-            toast.className = `${bgClass} shadow-lg rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium flex items-center gap-2.5 transition-all transform translate-y-2 opacity-0 pointer-events-auto border border-white/10 max-w-md mx-auto sm:mx-0`;
-            toast.innerHTML = `${icon} <span>${message}</span>`;
-            
-            container.appendChild(toast);
-
-            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 4000);
-        }
-
-        function getFormattedTimestamp() {
+        // 監査ログの記録
+        function logAudit(action, details) {
             const now = new Date();
             const yyyy = now.getFullYear();
             const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -685,82 +725,163 @@
             const hh = String(now.getHours()).padStart(2, '0');
             const mi = String(now.getMinutes()).padStart(2, '0');
             const ss = String(now.getSeconds()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+            const timestamp = `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+
+            const logEntry = { timestamp, action, details };
+            auditLogs.unshift(logEntry);
+            if (auditLogs.length > 50) auditLogs.pop(); // 最大50件保持
+            localStorage.setItem('misato_audit_logs_v1', JSON.stringify(auditLogs));
+            renderAuditLogs();
         }
 
-        function switchTab(tabName) {
-            const tabItems = document.getElementById('tabItems');
-            const tabLogs = document.getElementById('tabLogs');
-            const btnItems = document.getElementById('tabItemsBtn');
-            const btnLogs = document.getElementById('tabLogsBtn');
+        function renderAuditLogs() {
+            const container = document.getElementById('auditLogContainer');
+            if (!container) return;
+            if (auditLogs.length === 0) {
+                container.innerHTML = '<div class="text-slate-400 text-center py-2">ログ履歴はありません</div>';
+                return;
+            }
+            let html = '';
+            auditLogs.forEach(log => {
+                html += `<div><span class="text-amber-600 font-bold">[${log.timestamp}]</span> <span class="text-slate-800 font-semibold">${log.action}:</span> <span class="text-slate-600">${log.details}</span></div>`;
+            });
+            container.innerHTML = html;
+        }
 
-            if (tabName === 'items') {
-                tabItems.classList.remove('hidden');
-                tabLogs.classList.add('hidden');
-                btnItems.classList.add('tab-active');
-                btnLogs.classList.remove('tab-active');
-            } else {
-                tabItems.classList.add('hidden');
-                tabLogs.classList.remove('hidden');
-                btnItems.classList.remove('tab-active');
-                btnLogs.classList.add('tab-active');
+        function clearAuditLogs() {
+            if (confirm("セキュリティ監査ログをクリアしますか？")) {
+                auditLogs = [];
+                localStorage.removeItem('misato_audit_logs_v1');
+                renderAuditLogs();
+                showToast("監査ログをクリアしました。", "info");
             }
         }
 
-        function renderCategoryBadges() {
-            const container = document.getElementById('categoryBadgesContainer');
-            const html = VALID_CATEGORIES.map(cat => {
-                const count = items.filter(i => i.category === cat).reduce((acc, curr) => acc + Number(curr.qty), 0);
-                return `
-                    <button onclick="filterByCategory('${cat}')" class="bg-slate-100 hover:bg-blue-50 hover:border-blue-300 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold border border-slate-200 transition flex items-center gap-1.5">
-                        <span>${cat}</span>
-                        <span class="bg-slate-200 text-slate-800 px-1.5 py-0.2 rounded-full text-[10px] font-bold">${count}台</span>
-                    </button>
-                `;
-            }).join('');
-
-            container.innerHTML = html + `
-                <button onclick="filterByCategory('all')" class="bg-blue-600 text-white px-2.5 py-1 rounded-lg text-xs font-semibold hover:bg-blue-700 transition">
-                    全表示
-                </button>
-            `;
+        // 最終更新日時の記録と描画
+        function recordLastUpdated() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = now.getMonth() + 1;
+            const dd = now.getDate();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mi = String(now.getMinutes()).padStart(2, '0');
+            const formatted = `${yyyy}年${mm}月${dd}日 ${hh}:${mi}`;
+            localStorage.setItem('misato_last_updated_time', formatted);
+            renderLastUpdatedDisplay();
         }
 
-        function filterByCategory(cat) {
+        function renderLastUpdatedDisplay() {
+            const stored = localStorage.getItem('misato_last_updated_time') || '未更新';
+            const el = document.getElementById('lastUpdatedDisplay');
+            if (el) el.innerText = stored;
+        }
+
+        // 検索窓入力処理
+        function onSearchInput() {
+            const input = document.getElementById('searchInput');
+            const btn = document.getElementById('searchClearBtn');
+            const notice = document.getElementById('searchPromptNotice');
+            const badge = document.getElementById('searchResultBadge');
+            const query = input.value.trim();
+
+            if (query !== '') {
+                btn.classList.remove('hidden');
+                badge.classList.remove('hidden');
+            } else {
+                btn.classList.add('hidden');
+                badge.classList.add('hidden');
+            }
+
+            if (query.length >= 3) {
+                notice.classList.remove('hidden');
+            } else {
+                notice.classList.add('hidden');
+            }
+
+            renderTable();
+        }
+
+        function clearSearch() {
+            const input = document.getElementById('searchInput');
+            const btn = document.getElementById('searchClearBtn');
+            const notice = document.getElementById('searchPromptNotice');
+            const badge = document.getElementById('searchResultBadge');
+            input.value = '';
+            btn.classList.add('hidden');
+            notice.classList.add('hidden');
+            badge.classList.add('hidden');
+            renderTable();
+        }
+
+        // ダッシュボード数字クリックによるカテゴリ絞り込み
+        function filterCategoryFromDashboard(cat) {
             const select = document.getElementById('categoryFilter');
             select.value = cat;
-            renderItemsTable();
+            renderTable();
+
+            const targetSection = document.getElementById('inventoryTableSection');
+            if (targetSection) {
+                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            if (cat) {
+                showToast(`大分類「${cat}」で絞り込みました`, 'info');
+            } else {
+                showToast('すべての分類を表示します', 'info');
+            }
         }
 
-        function updateKPIs() {
-            document.getElementById('statTotalItems').innerText = items.length;
-            const totalQty = items.reduce((acc, curr) => acc + Number(curr.qty), 0);
-            document.getElementById('statTotalQty').innerText = totalQty.toLocaleString();
-
-            const lowStockCount = items.filter(item => item.qty <= (item.safetyQty || 0)).length;
-            document.getElementById('statLowStock').innerText = lowStockCount;
-
-            const todayStr = new Date().toISOString().split('T')[0];
-            const todayLogsCount = logs.filter(log => log.timestamp.startsWith(todayStr)).length;
-            document.getElementById('statTodayLogs').innerText = todayLogsCount;
-        }
-
-        function populateSelectOptions() {
+        function populateSelects() {
             const dispatchSelect = document.getElementById('dispatchItemSelect');
             const receiveSelect = document.getElementById('receiveItemSelect');
-
-            let html = '<option value="">-- 選択してください --</option>';
-            items.forEach(item => {
-                const makerStr = item.maker ? `[${item.maker}] ` : '';
-                html += `<option value="${item.id}">【${item.category}】${makerStr}${item.code} - ${item.name} (在庫:${item.qty})</option>`;
+            let html = '<option value="">-- 対象型番を選択 --</option>';
+            masterData.forEach((row, idx) => {
+                const cat = row[0];
+                const maker = row[1] ? `[${row[1]}] ` : '';
+                const code = row[2];
+                const qty = row[3];
+                html += `<option value="${idx}">【${cat}】${maker}${code} (在庫:${qty}台)</option>`;
             });
-
             dispatchSelect.innerHTML = html;
             receiveSelect.innerHTML = html;
+
+            // 担当者セレクト
+            const dispatchWorkerSelect = document.getElementById('dispatchWorkerSelect');
+            const receiveWorkerSelect = document.getElementById('receiveWorkerSelect');
+            let workerHtml = '<option value="">-- 担当者を選択 --</option>';
+            workerList.forEach(w => {
+                workerHtml += `<option value="${w}">${w}</option>`;
+            });
+            workerHtml += `<option value="該当なし">（直接入力する...）</option>`;
+            if (dispatchWorkerSelect) dispatchWorkerSelect.innerHTML = workerHtml;
+            if (receiveWorkerSelect) receiveWorkerSelect.innerHTML = workerHtml;
         }
 
-        function getCategoryBadgeStyle(category) {
-            switch(category) {
+        function updateSummary() {
+            document.getElementById('statTotalModels').innerText = masterData.length;
+
+            const counts = { 'ランプ': 0, '安定器': 0, '器具': 0, '三郷在庫': 0, '電材他': 0 };
+            let totalQty = 0;
+
+            masterData.forEach(row => {
+                const cat = row[0];
+                const qty = parseInt(row[3]) || 0;
+                totalQty += qty;
+                if (counts[cat] !== undefined) {
+                    counts[cat] += qty;
+                }
+            });
+
+            document.getElementById('statLampQty').innerText = counts['ランプ'];
+            document.getElementById('statBallastQty').innerText = counts['安定器'];
+            document.getElementById('statFixtureQty').innerText = counts['器具'];
+            document.getElementById('statMisatoQty').innerText = counts['三郷在庫'];
+            document.getElementById('statElectricQty').innerText = counts['電材他'];
+            document.getElementById('statTotalQty').innerText = totalQty;
+        }
+
+        function getCategoryStyle(cat) {
+            switch(cat) {
                 case '器具': return 'bg-blue-100 text-blue-800 border-blue-200';
                 case '安定器': return 'bg-amber-100 text-amber-800 border-amber-200';
                 case 'ランプ': return 'bg-purple-100 text-purple-800 border-purple-200';
@@ -770,475 +891,473 @@
             }
         }
 
-        function renderItemsTable() {
-            const tbody = document.getElementById('itemsTableBody');
-            const searchQuery = document.getElementById('itemSearchInput').value.toLowerCase().trim();
-            const categoryFilter = document.getElementById('categoryFilter').value;
+        function renderTable() {
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            const category = document.getElementById('categoryFilter').value;
             const stockFilter = document.getElementById('stockFilter').value;
+            const tbody = document.getElementById('inventoryBody');
+            tbody.innerHTML = '';
 
-            const filtered = items.filter(item => {
-                const matchesSearch = item.code.toLowerCase().includes(searchQuery) || 
-                                     (item.maker && item.maker.toLowerCase().includes(searchQuery)) ||
-                                     (item.name && item.name.toLowerCase().includes(searchQuery)) ||
-                                     (item.location && item.location.toLowerCase().includes(searchQuery));
+            const filtered = masterData.filter((row) => {
+                const matchesCategory = category === "" || row[0] === category;
+                const matchesSearch = row.some(cell => String(cell).toLowerCase().includes(search));
                 
-                let matchesCategory = true;
-                if (categoryFilter !== 'all') matchesCategory = item.category === categoryFilter;
-
                 let matchesStock = true;
-                if (stockFilter === 'inStock') matchesStock = item.qty > 0;
-                else if (stockFilter === 'lowStock') matchesStock = item.qty <= item.safetyQty && item.qty > 0;
-                else if (stockFilter === 'outOfStock') matchesStock = item.qty === 0;
+                const qty = parseInt(row[3]) || 0;
 
-                return matchesSearch && matchesCategory && matchesStock;
-            });
+                const modelCode = String(row[2] || '').toLowerCase();
+                const isModelPrefixMatch = search.length >= 3 && (modelCode.startsWith(search) || modelCode.includes(search));
 
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">条件に該当する器具・商品がありません。</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = filtered.map(item => {
-                let statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">正常</span>`;
-                if (item.qty === 0) {
-                    statusBadge = `<span class="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">在庫切れ</span>`;
-                } else if (item.qty <= item.safetyQty) {
-                    statusBadge = `<span class="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">要補充</span>`;
+                if (stockFilter === 'inStock') {
+                    matchesStock = qty > 0 || isModelPrefixMatch;
+                } else if (stockFilter === 'outOfStock') {
+                    matchesStock = qty === 0;
                 }
 
-                const catBadgeClass = getCategoryBadgeStyle(item.category);
-
-                return `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="py-2.5 px-3">
-                            <span class="border px-2 py-0.5 rounded-md text-[11px] font-bold ${catBadgeClass}">
-                                ${item.category}
-                            </span>
-                        </td>
-                        <td class="py-2.5 px-3 font-medium text-slate-700 text-xs">${item.maker || '-'}</td>
-                        <td class="py-2.5 px-3 font-mono font-bold text-slate-900">${item.code}</td>
-                        <td class="py-2.5 px-3 font-medium text-slate-800">${item.name || '-'}</td>
-                        <td class="py-2.5 px-3 text-center">
-                            <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-300 font-mono text-xs">
-                                ${item.location || '未設定'}
-                            </span>
-                        </td>
-                        <td class="py-2.5 px-3 text-right font-bold ${item.qty === 0 ? 'text-rose-600' : 'text-slate-900'} text-base">
-                            ${item.qty}
-                        </td>
-                        <td class="py-2.5 px-3 text-center">${statusBadge}</td>
-                        <td class="py-2.5 px-3 text-center">
-                            <div class="flex items-center justify-center gap-1">
-                                <button onclick="quickDispatch('${item.id}')" class="text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 active:bg-rose-100" title="引き当て・持ち出し">
-                                    <i class="fa-solid fa-minus-circle"></i><span>出庫</span>
-                                </button>
-                                <button onclick="quickReceive('${item.id}')" class="text-emerald-600 hover:bg-emerald-50 px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 active:bg-emerald-100" title="持ち込み・返納">
-                                    <i class="fa-solid fa-plus-circle"></i><span>入庫</span>
-                                </button>
-                                <button onclick="deleteItem('${item.id}')" class="text-slate-400 hover:text-rose-600 p-1 rounded-lg text-xs transition" title="削除">
-                                    <i class="fa-solid fa-trash-can"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function renderLogsTable() {
-            const tbody = document.getElementById('logsTableBody');
-            const searchQuery = document.getElementById('logSearchInput').value.toLowerCase().trim();
-            const filterValue = document.getElementById('logTypeFilter').value;
-
-            const filtered = logs.filter(log => {
-                const matchesSearch = log.code.toLowerCase().includes(searchQuery) || 
-                                     log.name.toLowerCase().includes(searchQuery) ||
-                                     (log.category && log.category.toLowerCase().includes(searchQuery)) ||
-                                     log.worker.toLowerCase().includes(searchQuery) ||
-                                     (log.project && log.project.toLowerCase().includes(searchQuery));
-                
-                let matchesFilter = true;
-                if (filterValue !== 'all') matchesFilter = log.type === filterValue;
-
-                return matchesSearch && matchesFilter;
+                return matchesCategory && matchesSearch && matchesStock;
             });
 
+            document.getElementById('searchResultCount').innerText = filtered.length;
+            document.getElementById('filteredCountBadge').innerText = `${filtered.length}件表示`;
+
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">入出庫履歴が存在しません。</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">条件に該当するデータがありません。</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = filtered.map(log => {
-                const isReceive = log.type === '入庫';
-                const badgeClass = isReceive ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-rose-100 text-rose-800 border-rose-300';
-                const icon = isReceive ? '<i class="fa-solid fa-arrow-down-left mr-1"></i>入庫' : '<i class="fa-solid fa-arrow-up-right mr-1"></i>出庫';
-                const catBadgeClass = getCategoryBadgeStyle(log.category || '器具');
+            filtered.forEach(row => {
+                const realIdx = masterData.indexOf(row);
+                const qty = parseInt(row[3]) || 0;
+                const catStyle = getCategoryStyle(row[0]);
 
-                return `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="py-2.5 px-3 font-mono text-xs text-slate-500">${log.timestamp}</td>
-                        <td class="py-2.5 px-3 text-center">
-                            <span class="border px-2 py-0.5 rounded-full text-[11px] font-bold ${badgeClass}">
-                                ${icon}
-                            </span>
-                        </td>
-                        <td class="py-2.5 px-3">
-                            <span class="border px-2 py-0.5 rounded-md text-[10px] font-bold ${catBadgeClass}">
-                                ${log.category || '器具'}
-                            </span>
-                        </td>
-                        <td class="py-2.5 px-3 font-mono font-semibold text-slate-800">${log.code}</td>
-                        <td class="py-2.5 px-3 font-medium text-slate-800">${log.name}</td>
-                        <td class="py-2.5 px-3 text-right font-bold ${isReceive ? 'text-emerald-600' : 'text-rose-600'} text-sm">
-                            ${isReceive ? '+' : '-'}${log.qty}
-                        </td>
-                        <td class="py-2.5 px-3 text-slate-700">${log.worker}</td>
-                        <td class="py-2.5 px-3 text-xs text-slate-500">${log.project || '-'}</td>
-                    </tr>
+                let qtyCellContent = `<span class="${qty === 0 ? 'text-rose-600 font-bold' : 'text-slate-900'}">${qty}</span>`;
+                if (qty === 0) {
+                    qtyCellContent += ` <span class="inline-block bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded ml-1">在庫切れ</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-slate-50 transition ${qty === 0 ? 'bg-rose-50/40' : ''}`;
+                tr.innerHTML = `
+                    <td class="py-3 px-4"><span class="border px-2 py-0.5 rounded text-[11px] font-bold ${catStyle}">${escapeHtml(row[0])}</span></td>
+                    <td class="py-3 px-4 font-medium text-slate-700 text-xs">${escapeHtml(row[1]) || '-'}</td>
+                    <td class="py-3 px-4 font-mono font-extrabold text-slate-900">${escapeHtml(row[2])}</td>
+                    <td class="py-3 px-4 text-right font-extrabold text-base">${qtyCellContent}</td>
+                    <td class="py-3 px-4 text-center"><span class="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded font-mono text-xs">${escapeHtml(row[4]) || '-'}</span></td>
+                    <td class="py-3 px-4 text-xs text-slate-600">${escapeHtml(row[5]) || '-'}</td>
+                    <td class="py-3 px-4 text-center text-xs text-slate-500">${escapeHtml(row[6]) || '-'}</td>
+                    <td class="py-3 px-4 text-center bg-blue-50/30">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button onclick="quickDispatch(${realIdx})" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1 active:scale-95" title="この品目を出庫">
+                                <i class="fa-solid fa-minus-circle"></i><span>出庫</span>
+                            </button>
+                            <button onclick="quickReceive(${realIdx})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1 active:scale-95" title="この品目を入庫">
+                                <i class="fa-solid fa-plus-circle"></i><span>入庫</span>
+                            </button>
+                            <button onclick="deleteRow(${realIdx})" class="text-slate-300 hover:text-rose-600 p-1 rounded text-xs transition" title="削除">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
                 `;
-            }).join('');
+                tbody.appendChild(tr);
+            });
         }
 
-        // --- 出庫/引き当て処理 ---
-        function onDispatchItemChange() {
-            const selectId = document.getElementById('dispatchItemSelect').value;
-            const badge = document.getElementById('dispatchStockBadge');
-            if (!selectId) {
-                badge.classList.add('hidden');
-                return;
-            }
-            const item = items.find(i => i.id === selectId);
-            if (item) {
-                document.getElementById('dispatchCategoryMaker').innerText = `${item.category} / ${item.maker || '指定なし'}`;
-                document.getElementById('dispatchCurrentQty').innerText = item.qty + ' 台';
-                document.getElementById('dispatchLocation').innerText = item.location || '未設定';
-                badge.classList.remove('hidden');
+        // 担当者プルダウン制御（カスタム入力切替）
+        function onWorkerSelectChange(type) {
+            const select = document.getElementById(type + 'WorkerSelect');
+            const customInput = document.getElementById(type + 'WorkerCustom');
+            if (select.value === '該当なし') {
+                customInput.classList.remove('hidden');
+                customInput.value = '';
+                customInput.focus();
+            } else {
+                customInput.classList.add('hidden');
+                customInput.value = select.value;
             }
         }
 
-        function quickDispatch(itemId) {
-            document.getElementById('dispatchItemSelect').value = itemId;
-            onDispatchItemChange();
+        function getWorkerName(type) {
+            const select = document.getElementById(type + 'WorkerSelect');
+            const customInput = document.getElementById(type + 'WorkerCustom');
+            if (select.value === '該当なし') {
+                return customInput.value.trim();
+            }
+            return select.value;
+        }
+
+        function quickDispatch(idx) {
+            document.getElementById('dispatchItemSelect').value = idx;
+            document.getElementById('dispatchWorkerSelect').value = "";
+            document.getElementById('dispatchWorkerCustom').value = "";
+            document.getElementById('dispatchWorkerCustom').classList.add('hidden');
+            onDispatchSelectChange();
             openModal('dispatchModal');
         }
 
-        function executeDispatch() {
-            const itemId = document.getElementById('dispatchItemSelect').value;
-            const qty = parseInt(document.getElementById('dispatchQty').value, 10);
-            const worker = document.getElementById('dispatchWorker').value.trim();
-            const project = document.getElementById('dispatchProject').value.trim();
-
-            if (!itemId) return showToast('商品を選択してください。', 'error');
-            if (!qty || qty <= 0) return showToast('正しく数量を入力してください。', 'error');
-            if (!worker) return showToast('担当者名を入力してください。', 'error');
-
-            const item = items.find(i => i.id === itemId);
-            if (!item) return showToast('アイテムが見つかりません。', 'error');
-
-            if (item.qty < qty) {
-                return showToast(`引き当てエラー: 現在庫(${item.qty}台)を超える数量(${qty}台)は持ち出せません。`, 'error');
-            }
-
-            item.qty -= qty;
-
-            const newLog = {
-                id: 'log-' + Date.now(),
-                timestamp: getFormattedTimestamp(),
-                type: '出庫',
-                category: item.category,
-                code: item.code,
-                name: `${item.maker ? item.maker + ' ' : ''}${item.name}`,
-                qty: qty,
-                worker: worker,
-                project: project
-            };
-            logs.unshift(newLog);
-
-            saveData();
-            renderItemsTable();
-            renderLogsTable();
-            closeModal('dispatchModal');
-
-            document.getElementById('dispatchQty').value = 1;
-            document.getElementById('dispatchProject').value = '';
-
-            showToast(`引き当て完了: [${item.category}] ${item.code} を ${qty}台 出庫しました。`, 'success');
-        }
-
-        // --- 入庫/持ち込み処理 ---
-        function onReceiveItemChange() {
-            const selectId = document.getElementById('receiveItemSelect').value;
-            const badge = document.getElementById('receiveStockBadge');
-            if (!selectId) {
-                badge.classList.add('hidden');
-                return;
-            }
-            const item = items.find(i => i.id === selectId);
-            if (item) {
-                document.getElementById('receiveCategoryMaker').innerText = `${item.category} / ${item.maker || '指定なし'}`;
-                document.getElementById('receiveCurrentQty').innerText = item.qty + ' 台';
-                badge.classList.remove('hidden');
-            }
-        }
-
-        function quickReceive(itemId) {
-            document.getElementById('receiveItemSelect').value = itemId;
-            onReceiveItemChange();
+        function quickReceive(idx) {
+            document.getElementById('receiveItemSelect').value = idx;
+            document.getElementById('receiveWorkerSelect').value = "";
+            document.getElementById('receiveWorkerCustom').value = "";
+            document.getElementById('receiveWorkerCustom').classList.add('hidden');
+            onReceiveSelectChange();
             openModal('receiveModal');
         }
 
-        function executeReceive() {
-            const itemId = document.getElementById('receiveItemSelect').value;
-            const qty = parseInt(document.getElementById('receiveQty').value, 10);
-            const worker = document.getElementById('receiveWorker').value.trim();
-            const project = document.getElementById('receiveProject').value.trim();
+        function onDispatchSelectChange() {
+            const idx = document.getElementById('dispatchItemSelect').value;
+            const badge = document.getElementById('dispatchInfoBadge');
+            if (idx === "") {
+                badge.classList.add('hidden');
+                return;
+            }
+            const item = masterData[idx];
+            document.getElementById('dispatchCurrentQty').innerText = `${item[3]} 台`;
+            document.getElementById('dispatchLocation').innerText = item[4] || '未設定';
+            badge.classList.remove('hidden');
+        }
 
-            if (!itemId) return showToast('商品を選択してください。', 'error');
-            if (!qty || qty <= 0) return showToast('正しく数量を入力してください。', 'error');
-            if (!worker) return showToast('担当者名を入力してください。', 'error');
+        function executeDispatch() {
+            const idx = document.getElementById('dispatchItemSelect').value;
+            const qty = parseInt(document.getElementById('dispatchQty').value, 10);
+            const worker = getWorkerName('dispatch');
 
-            const item = items.find(i => i.id === itemId);
-            if (!item) return showToast('アイテムが見つかりません。', 'error');
+            if (idx === "") return showToast("対象の型番を選択してください。", "error");
+            if (!qty || qty <= 0) return showToast("正しく台数を入力してください。", "error");
+            if (!worker) return showToast("担当者を選択または入力してください。", "error");
 
-            item.qty += qty;
+            const item = masterData[idx];
+            const currentQty = parseInt(item[3]) || 0;
+            if (currentQty < qty) {
+                return showToast(`引き当てエラー: 現在庫数(${currentQty}台)を超える持ち出しはできません。`, "error");
+            }
 
-            const newLog = {
-                id: 'log-' + Date.now(),
-                timestamp: getFormattedTimestamp(),
-                type: '入庫',
-                category: item.category,
-                code: item.code,
-                name: `${item.maker ? item.maker + ' ' : ''}${item.name}`,
-                qty: qty,
-                worker: worker,
-                project: project
-            };
-            logs.unshift(newLog);
-
+            item[3] = currentQty - qty;
+            recordLastUpdated();
             saveData();
-            renderItemsTable();
-            renderLogsTable();
+            renderTable();
+            closeModal('dispatchModal');
+
+            document.getElementById('dispatchQty').value = 1;
+            showToast(`[出庫完了] ${item[2]} を ${qty}台 引き当てました (${worker})`, "success");
+        }
+
+        function onReceiveSelectChange() {
+            const idx = document.getElementById('receiveItemSelect').value;
+            const badge = document.getElementById('receiveInfoBadge');
+            if (idx === "") {
+                badge.classList.add('hidden');
+                return;
+            }
+            const item = masterData[idx];
+            document.getElementById('receiveCurrentQty').innerText = `${item[3]} 台`;
+            badge.classList.remove('hidden');
+        }
+
+        function executeReceive() {
+            const idx = document.getElementById('receiveItemSelect').value;
+            const qty = parseInt(document.getElementById('receiveQty').value, 10);
+            const worker = getWorkerName('receive');
+
+            if (idx === "") return showToast("対象の型番を選択してください。", "error");
+            if (!qty || qty <= 0) return showToast("正しく台数を入力してください。", "error");
+            if (!worker) return showToast("担当者を選択または入力してください。", "error");
+
+            const item = masterData[idx];
+            const currentQty = parseInt(item[3]) || 0;
+
+            item[3] = currentQty + qty;
+            recordLastUpdated();
+            saveData();
+            renderTable();
             closeModal('receiveModal');
 
             document.getElementById('receiveQty').value = 1;
-            document.getElementById('receiveProject').value = '';
-
-            showToast(`持ち込み入庫完了: [${item.category}] ${item.code} が ${qty}台 増えました。`, 'success');
+            showToast(`[入庫完了] ${item[2]} を ${qty}台 返納・持ち込みました (${worker})`, "success");
         }
 
-        // 新規登録
         function saveNewItem() {
             const category = document.getElementById('newCategory').value;
             const maker = document.getElementById('newMaker').value.trim();
             const code = document.getElementById('newModelCode').value.trim();
-            const name = document.getElementById('newItemName').value.trim();
             const qty = parseInt(document.getElementById('newQty').value, 10) || 0;
-            const safetyQty = parseInt(document.getElementById('newSafetyQty').value, 10) || 0;
             const location = document.getElementById('newLocation').value.trim();
+            const note = document.getElementById('newNote').value.trim();
 
-            if (!code) {
-                return showToast('型番は必須項目です。', 'error');
-            }
+            if (!code) return showToast("型番は必須項目です。", "error");
 
-            if (items.some(i => i.code === code && i.category === category)) {
-                return showToast(`大分類「${category}」内に同一型番がすでに存在します。`, 'error');
-            }
-
-            const newItem = {
-                id: Date.now().toString(),
-                category,
-                maker,
-                code,
-                name,
-                qty,
-                safetyQty,
-                location
-            };
-
-            items.push(newItem);
+            masterData.push([category, maker, code, qty, location, note, ""]);
+            recordLastUpdated();
             saveData();
-            renderItemsTable();
+            renderTable();
             closeModal('newItemModal');
 
             document.getElementById('newMaker').value = '';
             document.getElementById('newModelCode').value = '';
-            document.getElementById('newItemName').value = '';
             document.getElementById('newQty').value = 1;
             document.getElementById('newLocation').value = '';
+            document.getElementById('newNote').value = '';
 
-            showToast(`[${category}] ${code} を新規登録しました。`, 'success');
+            showToast(`[新規登録完了] ${code} をマスターに追加しました。`, "success");
         }
 
-        function deleteItem(id) {
-            const item = items.find(i => i.id === id);
-            if (!item) return;
-
-            if (confirm(`大分類「${item.category}」の型番「${item.code}」を削除しますか？`)) {
-                items = items.filter(i => i.id !== id);
+        function deleteRow(idx) {
+            const item = masterData[idx];
+            if (confirm(`型番「${item[2]}」を削除しますか？`)) {
+                masterData.splice(idx, 1);
+                recordLastUpdated();
                 saveData();
-                renderItemsTable();
-                showToast(`削除しました。`, 'info');
+                renderTable();
+                showToast("削除しました。", "info");
             }
         }
 
-        // CSV/Excel 統合インポート (場所不明・Sheet1は読み込み対象外)
-        function importMasterFile() {
-            const fileInput = document.getElementById('importFileInput');
-            const file = fileInput.files[0];
+        // --- 在庫CSV / Excel出力・インポート ---
+        function exportMasterCSV() {
+            let csvContent = "\uFEFF大分類,製品,型番,台,場所,補足,出品\n";
+            masterData.forEach(row => {
+                const escaped = row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`);
+                csvContent += escaped.join(",") + "\n";
+            });
 
-            if (!file) {
-                return showToast('ファイルを選択してください。', 'error');
-            }
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.setAttribute("href", url);
+            a.setAttribute("download", `全在庫状況まとめ_${getTodayYMD()}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            logAudit("在庫CSVエクスポート", `ファイル名: 全在庫状況まとめ_${getTodayYMD()}.csv`);
+            showToast("在庫CSVを出力しました。", "success");
+        }
+
+        function exportInventoryExcelCompatible() {
+            // Excel対応BOM付きCSV
+            let csvContent = "\uFEFF大分類\t製品\t型番\t台\t場所\t補足\t出品\n";
+            masterData.forEach(row => {
+                const escaped = row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`);
+                csvContent += escaped.join("\t") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.setAttribute("href", url);
+            a.setAttribute("download", `全在庫状況まとめ_Excel用_${getTodayYMD()}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            logAudit("在庫Excel用出力", `ファイル名: 全在庫状況まとめ_Excel用_${getTodayYMD()}.csv`);
+            showToast("Excel互換形式の在庫ファイルを出力しました。", "success");
+        }
+
+        function importInventoryCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
+                    const text = e.target.result;
+                    const lines = text.split(/\r\n|\n/);
+                    const newMaster = [];
                     
-                    let importedCount = 0;
-                    let updatedCount = 0;
-
-                    workbook.SheetNames.forEach(sheetName => {
-                        // 場所不明、Sheet1のシートはスキップ
-                        if (sheetName.includes('場所不明') || sheetName.includes('Sheet1')) {
-                            return;
+                    // ヘッダーを除外してパース (簡易CSVパーサ)
+                    for (let i = 1; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (!line) continue;
+                        
+                        // タブ区切り or カンマ区切り判定
+                        const delimiter = line.includes('\t') ? '\t' : ',';
+                        const row = parseCSVLine(line, delimiter);
+                        if (row.length >= 3 && row[2]) {
+                            newMaster.push([
+                                row[0] || '器具',
+                                row[1] || '',
+                                row[2] || '',
+                                parseInt(row[3]) || 0,
+                                row[4] || '',
+                                row[5] || '',
+                                row[6] || ''
+                            ]);
                         }
+                    }
 
-                        const worksheet = workbook.Sheets[sheetName];
-                        const json = XLSX.utils.sheet_to_json(worksheet);
-
-                        const defaultCategory = VALID_CATEGORIES.includes(sheetName) ? sheetName : '器具';
-
-                        json.forEach(row => {
-                            let category = row['大分類'] || row['カテゴリ'] || defaultCategory;
-                            if (!VALID_CATEGORIES.includes(category)) {
-                                category = '器具';
-                            }
-
-                            const maker = row['製品'] || row['メーカー'] || row['製品名'] || '';
-                            const code = row['型番'] || row['Model'] || row['code'] || row['Code'];
-                            const name = row['品名'] || row['※'] || row['仕様'] || row['Item'] || '';
-                            const qty = parseInt(row['台'] || row['数量'] || row['Qty'] || row['qty'] || 0, 10);
-                            const location = row['場所'] || row['棚番号'] || row['ロケーション'] || '';
-
-                            if (code) {
-                                const existing = items.find(i => i.code === String(code) && i.category === category);
-                                if (existing) {
-                                    existing.qty = qty;
-                                    if (maker) existing.maker = String(maker);
-                                    if (name) existing.name = String(name);
-                                    if (location) existing.location = String(location);
-                                    updatedCount++;
-                                } else {
-                                    items.push({
-                                        id: Date.now().toString() + Math.random().toString(36).substr(2, 4),
-                                        category: String(category),
-                                        maker: String(maker),
-                                        code: String(code),
-                                        name: String(name),
-                                        qty: qty,
-                                        safetyQty: 1,
-                                        location: String(location)
-                                    });
-                                    importedCount++;
-                                }
-                            }
-                        });
-                    });
-
-                    saveData();
-                    renderItemsTable();
-                    closeModal('adminModal');
-                    fileInput.value = '';
-
-                    showToast(`インポート完了: 新規 ${importedCount}件 / 更新 ${updatedCount}件`, 'success');
+                    if (newMaster.length > 0) {
+                        masterData = newMaster;
+                        recordLastUpdated();
+                        saveData();
+                        renderTable();
+                        logAudit("在庫インポート完了", `読込件数: ${newMaster.length}件 (ファイル名: ${file.name})`);
+                        showToast(`在庫データをインポートしました (${newMaster.length}件)`, "success");
+                    } else {
+                        showToast("有効な在庫データが見つかりませんでした。", "error");
+                    }
                 } catch (err) {
                     console.error(err);
-                    showToast('ファイルの読み込みに失敗しました。', 'error');
+                    showToast("ファイルの読み込みに失敗しました。", "error");
                 }
+                event.target.value = '';
             };
-            reader.readAsArrayBuffer(file);
+            reader.readAsText(file, 'UTF-8');
         }
 
-        // 全在庫 Excel出力
-        function exportMasterXLSX() {
-            const exportData = items.map(i => ({
-                '大分類': i.category,
-                '製品(メーカー)': i.maker || '',
-                '型番': i.code,
-                '品名・仕様': i.name || '',
-                '台(数量)': i.qty,
-                '安全在庫': i.safetyQty || 0,
-                '保管場所': i.location || ''
-            }));
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "全在庫マスター");
-            XLSX.writeFile(wb, `三郷倉庫_全在庫マスター_${getTodayYMD()}.xlsx`);
-            showToast('Excelファイルを書き出しました。', 'success');
+        // --- 担当者CSV / Excel出力・インポート ---
+        function exportWorkersCSV() {
+            let csvContent = "\uFEFF担当者名\n";
+            workerList.forEach(w => {
+                csvContent += `"${w.replace(/"/g, '""')}"\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.setAttribute("href", url);
+            a.setAttribute("download", `担当一覧管理シート_${getTodayYMD()}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            logAudit("担当者CSVエクスポート", `ファイル名: 担当一覧管理シート_${getTodayYMD()}.csv`);
+            showToast("担当者CSVを出力しました。", "success");
         }
 
-        // 全在庫 CSV出力
-        function exportMasterCSV() {
-            const exportData = items.map(i => ({
-                '大分類': i.category,
-                '製品(メーカー)': i.maker || '',
-                '型番': i.code,
-                '品名・仕様': i.name || '',
-                '台(数量)': i.qty,
-                '安全在庫': i.safetyQty || 0,
-                '保管場所': i.location || ''
-            }));
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "全在庫マスター");
-            XLSX.writeFile(wb, `三郷倉庫_全在庫マスター_${getTodayYMD()}.csv`, { bookType: "csv" });
-            showToast('CSVファイルを書き出しました。', 'success');
+        function exportWorkersExcelCompatible() {
+            let csvContent = "\uFEFF担当者名\n";
+            workerList.forEach(w => {
+                csvContent += `"${w.replace(/"/g, '""')}"\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.setAttribute("href", url);
+            a.setAttribute("download", `担当一覧管理シート_Excel用_${getTodayYMD()}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            logAudit("担当者Excel用出力", `ファイル名: 担当一覧管理シート_Excel用_${getTodayYMD()}.csv`);
+            showToast("Excel互換形式の担当者ファイルを出力しました。", "success");
         }
 
-        // 入出庫履歴 CSV出力
-        function exportLogsCSV() {
-            const exportData = logs.map(l => ({
-                '日付': l.timestamp,
-                '区分': l.type,
-                '大分類': l.category || '器具',
-                '型番': l.code,
-                '品名・メーカー': l.name,
-                '数量': l.qty,
-                '担当者': l.worker,
-                '現場名・備考': l.project || ''
-            }));
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "入出庫履歴");
-            XLSX.writeFile(wb, `三郷倉庫_入出庫履歴_${getTodayYMD()}.csv`, { bookType: "csv" });
-            showToast('入出庫履歴CSVを出力しました。', 'success');
+        function importWorkersCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const text = e.target.result;
+                    const lines = text.split(/\r\n|\n/);
+                    const newWorkers = [];
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (!line) continue;
+                        const delimiter = line.includes('\t') ? '\t' : ',';
+                        const row = parseCSVLine(line, delimiter);
+                        if (row[0]) {
+                            const name = row[0].trim();
+                            if (name && !newWorkers.includes(name)) {
+                                newWorkers.push(name);
+                            }
+                        }
+                    }
+
+                    if (newWorkers.length > 0) {
+                        workerList = newWorkers;
+                        saveData();
+                        logAudit("担当者インポート完了", `読込件数: ${newWorkers.length}名 (ファイル名: ${file.name})`);
+                        showToast(`担当一覧をインポートしました (${newWorkers.length}名)`, "success");
+                    } else {
+                        showToast("有効な担当者データが見つかりませんでした。", "error");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast("担当者ファイルの読み込みに失敗しました。", "error");
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // CSV一行のダブルクォーテーションを考慮したパース関数
+        function parseCSVLine(text, delimiter = ',') {
+            const result = [];
+            let inQuotes = false;
+            let current = '';
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                if (char === '"') {
+                    if (inQuotes && text[i+1] === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === delimiter && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result.map(val => val.replace(/^"|"$/g, ''));
+        }
+
+        function resetToMaster() {
+            if (confirm("初期の263型番・800台のマスターデータおよび初期担当者に復元しますか？")) {
+                masterData = JSON.parse(JSON.stringify(initialMasterData));
+                workerList = JSON.parse(JSON.stringify(initialWorkers));
+                saveData();
+                renderTable();
+                closeModal('adminModal');
+                logAudit("全データ初期化", "初期マスター・担当者へリセット");
+                showToast("初期データに復元しました。", "info");
+            }
         }
 
         function getTodayYMD() {
             return new Date().toISOString().split('T')[0].replace(/-/g, '');
         }
 
-        function resetToDefaultData() {
-            if (confirm('添付エクセルの対象5シート（器具・安定器・ランプ・電材他・三郷在庫）の最新初期データに戻しますか？')) {
-                items = JSON.parse(JSON.stringify(initialItems));
-                logs = JSON.parse(JSON.stringify(initialLogs));
-                saveData();
-                renderItemsTable();
-                renderLogsTable();
-                closeModal('adminModal');
-                showToast('5シートの初期データに復元しました。', 'info');
-            }
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
 
-        function openModal(id) {
-            document.getElementById(id).classList.remove('hidden');
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-slate-800 text-white';
+            if (type === 'success') bgClass = 'bg-emerald-700 text-white';
+            else if (type === 'error') bgClass = 'bg-rose-700 text-white';
+
+            toast.className = `${bgClass} shadow-lg rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all transform translate-y-2 opacity-0 border border-white/10 pointer-events-auto`;
+            toast.innerHTML = `<span>${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
-        function closeModal(id) {
-            document.getElementById(id).classList.add('hidden');
-        }
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
     </script>
 </body>
 </html>
