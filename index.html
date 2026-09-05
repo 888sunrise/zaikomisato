@@ -1,148 +1,213 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>全在庫状況まとめ - 三郷・事務所横断在庫管理</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Chart.js for Visual Inventory Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- HTML5-QRCode Library for Camera Scanning -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- QRCode Generator for Label Printing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <style>
         body { font-family: 'Noto Sans JP', sans-serif; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         input, select, button { -webkit-tap-highlight-color: transparent; }
+        
+        @media print {
+            body * { visibility: hidden; }
+            #printableLabelArea, #printableLabelArea * { visibility: visible; }
+            #printableLabelArea { position: absolute; left: 0; top: 0; width: 100%; }
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased select-none p-3 sm:p-6">
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col antialiased select-none p-2 sm:p-5 transition-colors duration-200">
 
     <div class="max-w-7xl w-full mx-auto space-y-4 sm:space-y-6">
 
-        <!-- Header -->
-        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <!-- App Header Bar -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div>
-                <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-                    <i class="fa-solid fa-boxes-stacked text-blue-600"></i>
-                    <span>全在庫状況まとめ</span>
-                </h1>
-                <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-500 mt-0.5">
-                    <span>三郷倉庫・事務所内在庫 自動照会・自動引き当て管理</span>
-                    <span class="text-slate-300 hidden sm:inline">|</span>
-                    <span class="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-200/60 px-2 py-0.5 rounded">
-                        <i class="fa-solid fa-clock-rotate-left text-blue-600"></i>
-                        <span>最終更新日時：<span id="lastUpdatedDisplay">未更新</span></span>
-                    </span>
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
+                        <i class="fa-solid fa-boxes-stacked text-xl sm:text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                            <span>全在庫状況まとめ</span>
+                            <span class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-md hidden sm:inline">v2.5 Pro</span>
+                        </h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium flex items-center gap-2 flex-wrap">
+                            <span>三郷倉庫・事務所内在庫 自動照会・リアルタイム引き当て</span>
+                            <span class="text-slate-300 dark:text-slate-600">•</span>
+                            <span class="inline-flex items-center gap-1 font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-[11px]">
+                                <i class="fa-solid fa-clock-rotate-left text-blue-600 dark:text-blue-400"></i>
+                                <span>最終更新: <span id="lastUpdatedDisplay">未更新</span></span>
+                            </span>
+                        </p>
+                    </div>
                 </div>
             </div>
-            <div class="flex items-center gap-2 w-full sm:w-auto">
-                <button onclick="openModal('adminModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold px-3 py-2 rounded-lg text-xs sm:text-sm border border-slate-700 transition flex items-center gap-1.5 shadow-sm active:scale-[0.98]">
-                    <i class="fa-solid fa-user-shield text-amber-400"></i>
-                    <span>管理メニュー</span>
+
+            <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleDarkMode()" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition" title="ダーク/ライトモード切替">
+                    <i id="themeIcon" class="fa-solid fa-moon text-base"></i>
                 </button>
-                <button onclick="openModal('newItemModal')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-xs sm:text-sm shadow-md transition flex items-center gap-1.5 active:scale-[0.98]">
+
+                <!-- Analytics Chart Toggle -->
+                <button onclick="openModal('analyticsModal')" class="bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 font-bold px-3 py-2 rounded-xl text-xs sm:text-sm border border-indigo-200 dark:border-indigo-800 transition flex items-center gap-1.5 active:scale-[0.98]">
+                    <i class="fa-solid fa-chart-pie text-indigo-600 dark:text-indigo-400"></i>
+                    <span class="hidden sm:inline">在庫</span>分析
+                </button>
+
+                <!-- Camera QR Scanner Button -->
+                <button onclick="openScannerModal()" class="bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 dark:hover:bg-teal-900/80 text-teal-700 dark:text-teal-300 font-bold px-3 py-2 rounded-xl text-xs sm:text-sm border border-teal-200 dark:border-teal-800 transition flex items-center gap-1.5 active:scale-[0.98]">
+                    <i class="fa-solid fa-qrcode text-teal-600 dark:text-teal-400"></i>
+                    <span class="hidden sm:inline">QR</span>スキャン
+                </button>
+
+                <!-- Transaction History Button -->
+                <button onclick="openModal('historyModal')" class="bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/80 text-amber-800 dark:text-amber-300 font-bold px-3 py-2 rounded-xl text-xs sm:text-sm border border-amber-200 dark:border-amber-800 transition flex items-center gap-1.5 active:scale-[0.98]">
+                    <i class="fa-solid fa-history text-amber-600 dark:text-amber-400"></i>
+                    <span>入出庫履歴</span>
+                </button>
+
+                <!-- Admin Modal -->
+                <button onclick="openModal('adminModal')" class="bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-100 font-bold px-3 py-2 rounded-xl text-xs sm:text-sm transition flex items-center gap-1.5 shadow-sm active:scale-[0.98]">
+                    <i class="fa-solid fa-user-shield text-amber-400"></i>
+                    <span class="hidden sm:inline">管理</span>メニュー
+                </button>
+
+                <!-- New Item Modal -->
+                <button onclick="openModal('newItemModal')" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-3.5 py-2 rounded-xl text-xs sm:text-sm shadow-md transition flex items-center gap-1.5 active:scale-[0.98]">
                     <i class="fa-solid fa-plus"></i>
                     <span>新規登録</span>
                 </button>
             </div>
         </header>
 
-        <!-- Dynamic Verification Toast / Alert -->
-        <div id="verificationAlert" class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs sm:text-sm text-emerald-800 flex items-center justify-between shadow-sm">
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
-                <div>
+        <div id="verificationAlert" class="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-3 sm:p-3.5 text-xs sm:text-sm text-emerald-900 dark:text-emerald-200 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-2.5">
+                <i class="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400 text-base sm:text-lg shrink-0"></i>
+                <div class="leading-tight">
                     <span class="font-bold">データ自動検証完了：</span>
                     <span id="verificationMessage">型番総数 263件 / 総台数 800台 (ランプ:457, 安定器:15, 器具:62, 三郷在庫:207, 電材他:59) 完全一致</span>
                 </div>
             </div>
-            <span class="bg-emerald-200 text-emerald-900 text-[10px] font-bold px-2 py-0.5 rounded-full">精査済</span>
+            <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 text-[10px] font-extrabold px-2.5 py-1 rounded-full shrink-0">精査済</span>
         </div>
 
-        <!-- Summary Dashboard -->
         <div class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
             
-            <!-- Card 1: Total Model Count & Today's Net Change -->
-            <div onclick="filterCategoryFromDashboard('')" class="md:col-span-4 bg-white border border-slate-200 hover:border-blue-300 rounded-xl p-4 sm:p-5 shadow-sm flex flex-col justify-between cursor-pointer transition active:scale-[0.99]" title="クリックですべてのカテゴリを表示">
+            <!-- Card 1: Total Model Count & Net Change -->
+            <div onclick="filterCategoryFromDashboard('')" class="md:col-span-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between cursor-pointer transition active:scale-[0.99]" title="クリックですべてのカテゴリを表示">
                 <div class="flex justify-between items-center">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">総型番数</span>
-                    <span class="text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full">全表示</span>
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">総型番数</span>
+                    <span class="text-[10px] bg-blue-50 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full">全データ表示</span>
                 </div>
-                <div class="flex items-baseline gap-1 mt-2">
-                    <span id="statTotalModels" class="text-3xl sm:text-4xl font-black text-blue-600 tracking-tight">263</span>
-                    <span class="text-sm font-bold text-slate-700">件</span>
+                <div class="flex items-baseline gap-2 mt-2">
+                    <span id="statTotalModels" class="text-3xl sm:text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tight">263</span>
+                    <span class="text-sm font-bold text-slate-700 dark:text-slate-300">件</span>
+                    <span id="statLowStockBadge" class="ml-auto text-xs bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-extrabold px-2 py-0.5 rounded-full cursor-pointer hover:underline" onclick="event.stopPropagation(); filterLowStock();" title="在庫切れ・補充対象">要補充 0件</span>
                 </div>
-                <div class="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span class="text-slate-500 font-medium">当日の増減:</span>
-                    <span id="statTodayNetChange" class="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">±0 台 (入庫 0 / 出庫 0)</span>
+                <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs">
+                    <span class="text-slate-500 dark:text-slate-400 font-medium">当日の増減:</span>
+                    <span id="statTodayNetChange" class="font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">±0 台 (入庫 0 / 出庫 0)</span>
                 </div>
-                <div class="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
-                    <i class="fa-solid fa-database"></i> 全カテゴリ統合一括管理マスター
+                <div class="mt-2 text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                    <i class="fa-solid fa-database"></i> 統合一括管理マスター (三郷・事務所)
                 </div>
             </div>
 
-            <!-- Card 2: Category Quantity Breakdown -->
-            <div class="md:col-span-8 bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-sm">
+            <!-- Card 2: Category Breakdown Buttons -->
+            <div class="md:col-span-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-5 shadow-sm">
                 <div class="flex justify-between items-center mb-3">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">大分類別 在庫台数内訳</span>
-                    <span class="text-[10px] text-slate-400"><i class="fa-solid fa-hand-pointer text-blue-500 mr-0.5"></i>数字を押すと一覧が絞り込まれます</span>
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">大分類別 在庫台数内訳</span>
+                    <span class="text-[10px] text-slate-400 dark:text-slate-500"><i class="fa-solid fa-hand-pointer text-blue-500 mr-0.5"></i>数字を押すと一覧が絞り込まれます</span>
                 </div>
-                <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center divide-x-0 sm:divide-x divide-slate-100">
-                    <div onclick="filterCategoryFromDashboard('ランプ')" class="p-1.5 rounded-lg hover:bg-purple-50 cursor-pointer transition active:scale-95" title="「ランプ」で絞り込み">
-                        <div class="text-[11px] font-bold text-slate-500">ランプ</div>
-                        <div id="statLampQty" class="text-lg sm:text-xl font-extrabold text-slate-800 mt-1">457</div>
+                <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center divide-x-0 sm:divide-x divide-slate-100 dark:divide-slate-700">
+                    <div onclick="filterCategoryFromDashboard('ランプ')" class="p-2 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-950/40 cursor-pointer transition active:scale-95" title="「ランプ」で絞り込み">
+                        <div class="text-[11px] font-bold text-purple-600 dark:text-purple-400">ランプ</div>
+                        <div id="statLampQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">457</div>
                     </div>
-                    <div onclick="filterCategoryFromDashboard('安定器')" class="p-1.5 rounded-lg hover:bg-amber-50 cursor-pointer transition active:scale-95" title="「安定器」で絞り込み">
-                        <div class="text-[11px] font-bold text-slate-500">安定器</div>
-                        <div id="statBallastQty" class="text-lg sm:text-xl font-extrabold text-slate-800 mt-1">15</div>
+                    <div onclick="filterCategoryFromDashboard('安定器')" class="p-2 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer transition active:scale-95" title="「安定器」で絞り込み">
+                        <div class="text-[11px] font-bold text-amber-600 dark:text-amber-400">安定器</div>
+                        <div id="statBallastQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">15</div>
                     </div>
-                    <div onclick="filterCategoryFromDashboard('器具')" class="p-1.5 rounded-lg hover:bg-blue-50 cursor-pointer transition active:scale-95" title="「器具」で絞り込み">
-                        <div class="text-[11px] font-bold text-slate-500">器具</div>
-                        <div id="statFixtureQty" class="text-lg sm:text-xl font-extrabold text-slate-800 mt-1">62</div>
+                    <div onclick="filterCategoryFromDashboard('器具')" class="p-2 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer transition active:scale-95" title="「器具」で絞り込み">
+                        <div class="text-[11px] font-bold text-blue-600 dark:text-blue-400">器具</div>
+                        <div id="statFixtureQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">62</div>
                     </div>
-                    <div onclick="filterCategoryFromDashboard('三郷在庫')" class="p-1.5 rounded-lg hover:bg-indigo-50 cursor-pointer transition active:scale-95" title="「三郷在庫」で絞り込み">
-                        <div class="text-[11px] font-bold text-slate-500">三郷在庫</div>
-                        <div id="statMisatoQty" class="text-lg sm:text-xl font-extrabold text-slate-800 mt-1">207</div>
+                    <div onclick="filterCategoryFromDashboard('三郷在庫')" class="p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer transition active:scale-95" title="「三郷在庫」で絞り込み">
+                        <div class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">三郷在庫</div>
+                        <div id="statMisatoQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">207</div>
                     </div>
-                    <div onclick="filterCategoryFromDashboard('電材他')" class="p-1.5 rounded-lg hover:bg-emerald-50 cursor-pointer transition active:scale-95" title="「電材他」で絞り込み">
-                        <div class="text-[11px] font-bold text-slate-500">電材他</div>
-                        <div id="statElectricQty" class="text-lg sm:text-xl font-extrabold text-slate-800 mt-1">59</div>
+                    <div onclick="filterCategoryFromDashboard('電材他')" class="p-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer transition active:scale-95" title="「電材他」で絞り込み">
+                        <div class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">電材他</div>
+                        <div id="statElectricQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">59</div>
                     </div>
-                    <div onclick="filterCategoryFromDashboard('')" class="p-1.5 bg-blue-50/70 hover:bg-blue-100/70 rounded-lg sm:rounded-none cursor-pointer transition active:scale-95" title="すべてのカテゴリを表示">
-                        <div class="text-[11px] font-bold text-blue-700">合計台数</div>
-                        <div id="statTotalQty" class="text-lg sm:text-xl font-black text-blue-600 mt-1">800</div>
+                    <div onclick="filterCategoryFromDashboard('')" class="p-2 bg-blue-50/80 dark:bg-blue-900/40 hover:bg-blue-100 rounded-xl cursor-pointer transition active:scale-95" title="すべてのカテゴリを表示">
+                        <div class="text-[11px] font-bold text-blue-700 dark:text-blue-300">合計台数</div>
+                        <div id="statTotalQty" class="text-lg sm:text-2xl font-black text-blue-600 dark:text-blue-400 mt-0.5">800</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Controls Card -->
-        <div id="inventoryTableSection" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5 space-y-3">
+        <div id="inventoryTableSection" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-5 space-y-3">
             <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
                 
-                <!-- Search Input with Clear Button -->
+                <!-- Search Bar with instant badge -->
                 <div class="relative flex-1 flex items-center">
                     <i class="fa-solid fa-magnifying-glass absolute left-4 text-slate-400 text-base"></i>
-                    <input type="text" id="searchInput" oninput="onSearchInput()" placeholder="型番、製品名、保管場所で検索 (例: H4C、OD261、風呂場)..." class="w-full pl-12 pr-28 py-3 border-2 border-slate-300 rounded-xl text-sm sm:text-base font-medium focus:outline-none focus:border-blue-600 transition shadow-inner">
+                    <input type="text" id="searchInput" oninput="onSearchInput()" placeholder="型番、製品名、保管場所、補足で検索 (例: H4C、OD261、風呂場)..." class="w-full pl-11 pr-28 py-3 bg-slate-50 dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-xl text-sm sm:text-base font-semibold focus:outline-none focus:border-blue-600 dark:focus:border-blue-500 transition text-slate-800 dark:text-white">
                     
-                    <!-- Search Match Count Badge (hidden when search is empty) -->
-                    <span id="searchResultBadge" class="hidden absolute right-12 bg-blue-100 text-blue-800 font-extrabold text-xs px-2.5 py-1 rounded-md transition-all">
+                    <!-- Search Count Badge -->
+                    <span id="searchResultBadge" class="hidden absolute right-12 bg-blue-100 dark:bg-blue-900/80 text-blue-800 dark:text-blue-200 font-extrabold text-xs px-2.5 py-1 rounded-md transition-all">
                         <span id="searchResultCount">0</span> 件
                     </span>
 
-                    <!-- Clear Button -->
-                    <button id="searchClearBtn" onclick="clearSearch()" class="hidden absolute right-3 text-slate-400 hover:text-slate-600 p-1 focus:outline-none transition active:scale-90" title="検索クリア">
-                        <i class="fa-solid fa-circle-xmark text-xl sm:text-2xl text-slate-400 hover:text-rose-500"></i>
+                    <!-- Search Clear Button -->
+                    <button id="searchClearBtn" onclick="clearSearch()" class="hidden absolute right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 focus:outline-none transition active:scale-90" title="検索クリア">
+                        <i class="fa-solid fa-circle-xmark text-xl text-slate-400 hover:text-rose-500"></i>
                     </button>
                 </div>
 
-                <!-- Select Filters -->
-                <div class="flex items-center gap-2">
-                    <select id="categoryFilter" onchange="renderTable()" class="border-2 border-slate-300 rounded-xl px-3 py-2.5 text-xs sm:text-sm bg-white text-slate-700 font-bold focus:outline-none focus:border-blue-600">
+                <!-- Select Filters and Batch Operation Toggle -->
+                <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <select id="categoryFilter" onchange="renderTable()" class="border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200 font-bold focus:outline-none focus:border-blue-600">
                         <option value="">すべての大分類</option>
                         <option value="ランプ">大分類: ランプ</option>
                         <option value="安定器">大分類: 安定器</option>
@@ -151,50 +216,84 @@
                         <option value="電材他">大分類: 電材他</option>
                     </select>
 
-                    <select id="stockFilter" onchange="renderTable()" class="border-2 border-slate-300 rounded-xl px-3 py-2.5 text-xs sm:text-sm bg-white text-slate-700 font-bold focus:outline-none focus:border-blue-600">
+                    <select id="stockFilter" onchange="renderTable()" class="border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200 font-bold focus:outline-none focus:border-blue-600">
                         <option value="inStock" selected>在庫あり (1台以上)</option>
                         <option value="all">すべての台数 (0台含む)</option>
                         <option value="outOfStock">在庫なし (0台)</option>
+                        <option value="lowStock">要補充 (1台以下)</option>
+                    </select>
+
+                    <!-- Page Size Dropdown -->
+                    <select id="pageSizeSelect" onchange="changePageSize()" class="border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-2.5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200">
+                        <option value="25">25件/頁</option>
+                        <option value="50" selected>50件/頁</option>
+                        <option value="100">100件/頁</option>
+                        <option value="9999">全件表示</option>
                     </select>
                 </div>
             </div>
 
             <!-- Instant Search Info Prompt -->
-            <div id="searchPromptNotice" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-2.5 text-xs text-blue-900 flex items-center justify-between">
+            <div id="searchPromptNotice" class="hidden bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-xl p-2.5 text-xs text-blue-900 dark:text-blue-200 flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <i class="fa-solid fa-bolt text-amber-500 text-sm"></i>
-                    <span>検索結果が表示中：対象型番の右側にある <b class="text-rose-600">[出庫]</b> または <b class="text-emerald-600">[入庫]</b> ボタンを押すと、そのまま即時登録できます。</span>
+                    <span>検索結果が表示中：対象型番の右側にある <b class="text-rose-600 dark:text-rose-400">[出庫]</b> または <b class="text-emerald-600 dark:text-emerald-400">[入庫]</b> ボタンを押すと即時処理できます。</span>
                 </div>
             </div>
         </div>
 
-        <!-- Inventory Master Data Table -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="px-4 py-3 bg-slate-100/80 border-b border-slate-200 flex justify-between items-center">
-                <span class="text-xs font-extrabold text-slate-700 flex items-center gap-2">
-                    <i class="fa-solid fa-table-list text-blue-600 text-sm"></i>
-                    <span>全在庫リスト</span>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            
+            <!-- Table Header Toolbar -->
+            <div class="px-4 py-3 bg-slate-100/90 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-black text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-table-list text-blue-600 dark:text-blue-400 text-sm"></i>
+                        <span>全在庫マスターリスト</span>
+                    </span>
                     <span id="filteredCountBadge" class="bg-blue-600 text-white font-extrabold px-2.5 py-0.5 rounded-full text-[11px]">263件表示</span>
-                </span>
-                <span class="text-[11px] text-slate-500 font-medium">※3文字以上検索時、該当型番は在庫0台でも「在庫切れ」として下表に自動抽出されます</span>
+                </div>
+
+                <!-- Pagination & Table Tools -->
+                <div class="flex items-center gap-2 text-xs">
+                    <button onclick="prevPage()" id="prevPageBtn" class="px-2 py-1 rounded bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <span class="font-bold text-slate-600 dark:text-slate-300">
+                        <span id="currentPageNum">1</span> / <span id="totalPagesNum">1</span> ページ
+                    </span>
+                    <button onclick="nextPage()" id="nextPageBtn" class="px-2 py-1 rounded bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[850px]">
-                    <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[880px]">
+                    <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
                         <tr>
-                            <th class="py-3 px-4">大分類</th>
-                            <th class="py-3 px-4">製品 (メーカー)</th>
-                            <th class="py-3 px-4">型番</th>
-                            <th class="py-3 px-4 text-right">台数</th>
-                            <th class="py-3 px-4 text-center">場所</th>
+                            <th onclick="sortTable(0)" class="py-3 px-4 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                                大分類 <i class="fa-solid fa-sort text-slate-400 text-[10px] ml-1"></i>
+                            </th>
+                            <th onclick="sortTable(1)" class="py-3 px-4 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                                製品 (メーカー) <i class="fa-solid fa-sort text-slate-400 text-[10px] ml-1"></i>
+                            </th>
+                            <th onclick="sortTable(2)" class="py-3 px-4 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                                型番 <i class="fa-solid fa-sort text-slate-400 text-[10px] ml-1"></i>
+                            </th>
+                            <th onclick="sortTable(3)" class="py-3 px-4 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                                台数 <i class="fa-solid fa-sort text-slate-400 text-[10px] ml-1"></i>
+                            </th>
+                            <th onclick="sortTable(4)" class="py-3 px-4 text-center cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                                場所 <i class="fa-solid fa-sort text-slate-400 text-[10px] ml-1"></i>
+                            </th>
                             <th class="py-3 px-4">補足</th>
                             <th class="py-3 px-4 text-center">出品</th>
-                            <th class="py-3 px-4 text-center bg-blue-50/50">即時登録・引き当て</th>
+                            <th class="py-3 px-4 text-center bg-blue-50/50 dark:bg-blue-950/30">即時処理 & QR</th>
                         </tr>
                     </thead>
-                    <tbody id="inventoryBody" class="divide-y divide-slate-200">
-                        <!-- JS Dynamic Rendering -->
+                    <tbody id="inventoryBody" class="divide-y divide-slate-200 dark:divide-slate-700/60">
+                        <!-- JS Dynamic Table Rows -->
                     </tbody>
                 </table>
             </div>
@@ -202,108 +301,108 @@
 
     </div>
 
-    <!-- Modals -->
-    <!-- 1. 出庫 モーダル -->
+
+    <!-- Modal 1: 出庫 (Dispatch) -->
     <div id="dispatchModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col max-h-[92vh]">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-700">
             <div class="bg-rose-600 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
                 <h3 class="font-bold text-sm sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-truck-ramp-box"></i>
                     <span>器具の引き当て・持ち出し（出庫）</span>
                 </h3>
-                <button onclick="closeModal('dispatchModal')" class="text-rose-100 hover:text-white text-lg sm:text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="closeModal('dispatchModal')" class="text-rose-100 hover:text-white text-lg p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 sm:p-6 space-y-3.5 sm:space-y-4 overflow-y-auto">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">対象型番を選択 <span class="text-rose-500">*</span></label>
-                    <select id="dispatchItemSelect" onchange="onDispatchSelectChange()" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">対象型番を選択 <span class="text-rose-500">*</span></label>
+                    <select id="dispatchItemSelect" onchange="onDispatchSelectChange()" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
                     </select>
                 </div>
-                <div id="dispatchInfoBadge" class="hidden bg-slate-100 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
+                <div id="dispatchInfoBadge" class="hidden bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-1">
                     <div class="flex justify-between">
-                        <span class="text-slate-500">現在庫数:</span>
-                        <span id="dispatchCurrentQty" class="font-bold text-slate-800">0 台</span>
+                        <span class="text-slate-500 dark:text-slate-400">現在庫数:</span>
+                        <span id="dispatchCurrentQty" class="font-bold text-slate-800 dark:text-slate-100">0 台</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-slate-500">保管場所:</span>
-                        <span id="dispatchLocation" class="font-bold text-slate-800">-</span>
+                        <span class="text-slate-500 dark:text-slate-400">保管場所:</span>
+                        <span id="dispatchLocation" class="font-bold text-slate-800 dark:text-slate-100">-</span>
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">持ち出し台数 <span class="text-rose-500">*</span></label>
-                    <input type="number" id="dispatchQty" value="1" min="1" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">持ち出し台数 <span class="text-rose-500">*</span></label>
+                    <input type="number" id="dispatchQty" value="1" min="1" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">担当者名 <span class="text-rose-500">*</span></label>
-                    <select id="dispatchWorkerSelect" onchange="onWorkerSelectChange('dispatch')" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500 mb-2 bg-white">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">担当者名 <span class="text-rose-500">*</span></label>
+                    <select id="dispatchWorkerSelect" onchange="onWorkerSelectChange('dispatch')" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500 mb-2">
                         <option value="">-- 担当者を選択 --</option>
                     </select>
-                    <input type="text" id="dispatchWorkerCustom" placeholder="担当者名を入力してください" class="hidden w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
+                    <input type="text" id="dispatchWorkerCustom" placeholder="担当者名を入力してください" class="hidden w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
                 </div>
             </div>
-            <div class="bg-slate-50 px-4 sm:px-6 py-3 border-t border-slate-200 flex justify-end gap-2">
-                <button onclick="closeModal('dispatchModal')" class="px-3.5 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-100">キャンセル</button>
-                <button onclick="executeDispatch()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs sm:text-sm shadow active:scale-[0.98]">引き当て確定</button>
+            <div class="bg-slate-50 dark:bg-slate-900 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+                <button onclick="closeModal('dispatchModal')" class="px-3.5 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">キャンセル</button>
+                <button onclick="executeDispatch()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs sm:text-sm shadow active:scale-[0.98]">引き当て確定</button>
             </div>
         </div>
     </div>
 
-    <!-- 2. 入庫 モーダル -->
+    <!-- Modal 2: 入庫 (Receive) -->
     <div id="receiveModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col max-h-[92vh]">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-700">
             <div class="bg-emerald-600 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
                 <h3 class="font-bold text-sm sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-warehouse"></i>
                     <span>器具の返納・持ち込み（入庫）</span>
                 </h3>
-                <button onclick="closeModal('receiveModal')" class="text-emerald-100 hover:text-white text-lg sm:text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="closeModal('receiveModal')" class="text-emerald-100 hover:text-white text-lg p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 sm:p-6 space-y-3.5 sm:space-y-4 overflow-y-auto">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">返納対象の型番を選択 <span class="text-emerald-500">*</span></label>
-                    <select id="receiveItemSelect" onchange="onReceiveSelectChange()" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">返納対象の型番を選択 <span class="text-emerald-500">*</span></label>
+                    <select id="receiveItemSelect" onchange="onReceiveSelectChange()" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
                     </select>
                 </div>
-                <div id="receiveInfoBadge" class="hidden bg-slate-100 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
+                <div id="receiveInfoBadge" class="hidden bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-1">
                     <div class="flex justify-between">
-                        <span class="text-slate-500">現在の倉庫在庫数:</span>
-                        <span id="receiveCurrentQty" class="font-bold text-slate-800">0 台</span>
+                        <span class="text-slate-500 dark:text-slate-400">現在の倉庫在庫数:</span>
+                        <span id="receiveCurrentQty" class="font-bold text-slate-800 dark:text-slate-100">0 台</span>
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">返納・持ち込み台数 <span class="text-emerald-500">*</span></label>
-                    <input type="number" id="receiveQty" value="1" min="1" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">返納・持ち込み台数 <span class="text-emerald-500">*</span></label>
+                    <input type="number" id="receiveQty" value="1" min="1" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">担当者名 <span class="text-emerald-500">*</span></label>
-                    <select id="receiveWorkerSelect" onchange="onWorkerSelectChange('receive')" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 mb-2 bg-white">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">担当者名 <span class="text-emerald-500">*</span></label>
+                    <select id="receiveWorkerSelect" onchange="onWorkerSelectChange('receive')" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 mb-2">
                         <option value="">-- 担当者を選択 --</option>
                     </select>
-                    <input type="text" id="receiveWorkerCustom" placeholder="担当者名を入力してください" class="hidden w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
+                    <input type="text" id="receiveWorkerCustom" placeholder="担当者名を入力してください" class="hidden w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
                 </div>
             </div>
-            <div class="bg-slate-50 px-4 sm:px-6 py-3 border-t border-slate-200 flex justify-end gap-2">
-                <button onclick="closeModal('receiveModal')" class="px-3.5 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-100">キャンセル</button>
-                <button onclick="executeReceive()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs sm:text-sm shadow active:scale-[0.98]">持ち込み確定</button>
+            <div class="bg-slate-50 dark:bg-slate-900 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+                <button onclick="closeModal('receiveModal')" class="px-3.5 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">キャンセル</button>
+                <button onclick="executeReceive()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs sm:text-sm shadow active:scale-[0.98]">持ち込み確定</button>
             </div>
         </div>
     </div>
 
-    <!-- 3. 新規登録モーダル -->
+    <!-- Modal 3: 新規マスター登録 (New Item) -->
     <div id="newItemModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-lg w-full overflow-hidden border border-slate-200 dark:border-slate-700">
             <div class="bg-blue-600 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
                 <h3 class="font-bold text-sm sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-plus-circle"></i>
                     <span>新規器具マスター登録</span>
                 </h3>
-                <button onclick="closeModal('newItemModal')" class="text-blue-100 hover:text-white text-lg sm:text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="closeModal('newItemModal')" class="text-blue-100 hover:text-white text-lg p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 sm:p-6 space-y-3 sm:space-y-4">
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">大分類 <span class="text-rose-500">*</span></label>
-                        <select id="newCategory" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">大分類 <span class="text-rose-500">*</span></label>
+                        <select id="newCategory" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
                             <option value="器具">器具</option>
                             <option value="安定器">安定器</option>
                             <option value="ランプ">ランプ</option>
@@ -312,66 +411,183 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">製品 (メーカー名)</label>
-                        <input type="text" id="newMaker" placeholder="例: オーデリック" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">製品 (メーカー名)</label>
+                        <input type="text" id="newMaker" placeholder="例: オーデリック" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">型番 <span class="text-rose-500">*</span></label>
-                    <input type="text" id="newModelCode" placeholder="例: OD261770" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">型番 <span class="text-rose-500">*</span></label>
+                    <input type="text" id="newModelCode" placeholder="例: OD261770" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">初期台数</label>
-                        <input type="number" id="newQty" value="1" min="0" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">初期台数</label>
+                        <input type="number" id="newQty" value="1" min="0" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">場所</label>
-                        <input type="text" id="newLocation" placeholder="例: 風呂場" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">場所</label>
+                        <input type="text" id="newLocation" placeholder="例: 風呂場" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">補足仕様</label>
-                    <input type="text" id="newNote" placeholder="例: 2700K/φ150" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">補足仕様</label>
+                    <input type="text" id="newNote" placeholder="例: 2700K/φ150" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500">
                 </div>
             </div>
-            <div class="bg-slate-50 px-4 sm:px-6 py-3 border-t border-slate-200 flex justify-end gap-2">
-                <button onclick="closeModal('newItemModal')" class="px-3.5 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-100">キャンセル</button>
-                <button onclick="saveNewItem()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs sm:text-sm shadow active:scale-[0.98]">登録する</button>
+            <div class="bg-slate-50 dark:bg-slate-900 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+                <button onclick="closeModal('newItemModal')" class="px-3.5 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">キャンセル</button>
+                <button onclick="saveNewItem()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs sm:text-sm shadow active:scale-[0.98]">登録する</button>
             </div>
         </div>
     </div>
 
-    <!-- 4. 管理者メニュー モーダル -->
+    <!-- Modal 4: カメラ QRスキャナー モーダル -->
+    <div id="scannerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700">
+            <div class="bg-teal-700 px-4 py-3 text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm sm:text-base flex items-center gap-2">
+                    <i class="fa-solid fa-qrcode"></i>
+                    <span>QR / バーコードスキャン</span>
+                </h3>
+                <button onclick="closeScannerModal()" class="text-teal-100 hover:text-white p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 space-y-3">
+                <div id="reader" class="w-full rounded-xl overflow-hidden bg-black min-h-[220px] flex items-center justify-center text-white text-xs">
+                    <span>カメラを準備中...</span>
+                </div>
+                <div class="text-center">
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">型番のQRコードをカメラにかざしてください</p>
+                    <div class="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-center gap-2">
+                        <button onclick="simulateScanPrompt()" class="text-xs bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-200">
+                            手動型番テスト入力
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900 px-4 py-2.5 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+                <button onclick="closeScannerModal()" class="px-3.5 py-1.5 bg-slate-700 text-white rounded-lg text-xs font-bold">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 5: 入出庫履歴ログ モーダル (Transaction History) -->
+    <div id="historyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-3xl w-full overflow-hidden flex flex-col max-h-[88vh] border border-slate-200 dark:border-slate-700">
+            <div class="bg-amber-600 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm sm:text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>入出庫作業履歴ログ</span>
+                </h3>
+                <button onclick="closeModal('historyModal')" class="text-amber-100 hover:text-white p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 sm:p-6 overflow-y-auto space-y-3">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-slate-500 dark:text-slate-400">直近の引き当て・返納操作記録</span>
+                    <button onclick="clearTransactionLogs()" class="text-rose-600 hover:underline font-bold">履歴クリア</button>
+                </div>
+                <div class="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
+                    <table class="w-full text-xs text-left">
+                        <thead class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold">
+                            <tr>
+                                <th class="p-2.5">日時</th>
+                                <th class="p-2.5">区分</th>
+                                <th class="p-2.5">型番</th>
+                                <th class="p-2.5 text-right">数量</th>
+                                <th class="p-2.5">担当者</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionLogBody" class="divide-y divide-slate-200 dark:divide-slate-700">
+                            <!-- JS Dynamic Logs -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900 px-4 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+                <button onclick="closeModal('historyModal')" class="px-4 py-2 bg-slate-800 text-white font-bold rounded-xl text-xs">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 6: 在庫分析グラフ モーダル (Analytics) -->
+    <div id="analyticsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-700">
+            <div class="bg-indigo-600 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm sm:text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>在庫分析・グラフビジュアル</span>
+                </h3>
+                <button onclick="closeModal('analyticsModal')" class="text-indigo-100 hover:text-white p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 sm:p-6 overflow-y-auto space-y-6">
+                <div>
+                    <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">大分類別 在庫台数比率</h4>
+                    <div class="w-full h-64 flex items-center justify-center">
+                        <canvas id="categoryPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900 px-4 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+                <button onclick="closeModal('analyticsModal')" class="px-4 py-2 bg-slate-800 text-white font-bold rounded-xl text-xs">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 7: QRコードラベル印刷モーダル -->
+    <div id="qrModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700">
+            <div class="bg-slate-800 px-4 py-3 text-white flex justify-between items-center">
+                <h3 class="font-bold text-xs sm:text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-print text-amber-400"></i>
+                    <span>棚用 QRコードラベル作成</span>
+                </h3>
+                <button onclick="closeModal('qrModal')" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 text-center space-y-3" id="printableLabelArea">
+                <div id="qrCodeTarget" class="flex justify-center my-2"></div>
+                <div>
+                    <div id="qrModelName" class="font-mono font-black text-slate-900 dark:text-white text-base">MODEL</div>
+                    <div id="qrCategoryLoc" class="text-xs text-slate-500 dark:text-slate-400">分類 / 場所</div>
+                </div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900 px-4 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                <button onclick="window.print()" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow flex items-center gap-1">
+                    <i class="fa-solid fa-print"></i> 印刷
+                </button>
+                <button onclick="closeModal('qrModal')" class="px-3 py-1.5 bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 8: 管理者メニュー モーダル (Admin) -->
     <div id="adminModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-700">
             <div class="bg-slate-800 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center shrink-0">
                 <h3 class="font-bold text-sm sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-user-shield text-amber-400"></i>
                     <span>管理者機能（入出力・データ・監査ログ）</span>
                 </h3>
-                <button onclick="closeModal('adminModal')" class="text-slate-400 hover:text-white text-lg sm:text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="closeModal('adminModal')" class="text-slate-400 hover:text-white text-lg p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <div class="p-4 sm:p-6 space-y-5 text-xs sm:text-sm overflow-y-auto">
                 
                 <!-- Section 1: 在庫データ管理 -->
-                <div class="border border-slate-200 rounded-xl p-3.5 bg-slate-50 space-y-2.5">
-                    <h4 class="font-bold text-slate-800 flex items-center gap-1.5 text-sm">
+                <div class="border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 bg-slate-50 dark:bg-slate-900 space-y-2.5">
+                    <h4 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 text-sm">
                         <i class="fa-solid fa-boxes-stacked text-blue-600"></i> 在庫一覧データのインポート・エクスポート
                     </h4>
-                    <p class="text-slate-500 text-xs">文字化け対策済み (UTF-8 BOM付き) CSVファイルで出力・取り込みが行えます。</p>
+                    <p class="text-slate-500 dark:text-slate-400 text-xs">文字化け対策済み (UTF-8 BOM付き) CSVファイルで出力・取り込みが行えます。</p>
                     <div class="flex flex-wrap items-center gap-2 pt-1">
-                        <button onclick="exportMasterCSV()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition flex items-center gap-1.5">
+                        <button onclick="exportMasterCSV()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
                             <i class="fa-solid fa-file-csv"></i> 在庫CSVエクスポート
                         </button>
-                        <button onclick="exportInventoryExcelCompatible()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition flex items-center gap-1.5">
+                        <button onclick="exportInventoryExcelCompatible()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
                             <i class="fa-solid fa-file-excel"></i> 在庫Excel用出力 (.csv)
                         </button>
-                        <label class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition cursor-pointer flex items-center gap-1.5">
+                        <label class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition cursor-pointer flex items-center gap-1.5">
                             <i class="fa-solid fa-file-arrow-up"></i> 在庫インポート
                             <input type="file" id="importInventoryFile" accept=".csv" onchange="importInventoryCSV(event)" class="hidden">
                         </label>
@@ -379,19 +595,19 @@
                 </div>
 
                 <!-- Section 2: 担当一覧管理シート -->
-                <div class="border border-indigo-200 rounded-xl p-3.5 bg-indigo-50/50 space-y-2.5">
-                    <h4 class="font-bold text-indigo-900 flex items-center gap-1.5 text-sm">
+                <div class="border border-indigo-200 dark:border-indigo-900 rounded-xl p-3.5 bg-indigo-50/50 dark:bg-indigo-950/30 space-y-2.5">
+                    <h4 class="font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5 text-sm">
                         <i class="fa-solid fa-users-gear text-indigo-600"></i> 担当一覧管理シートのインポート・エクスポート
                     </h4>
-                    <p class="text-indigo-700 text-xs">出庫・入庫時に選択する担当者マスターの編集・バックアップが行えます。</p>
+                    <p class="text-indigo-700 dark:text-indigo-300 text-xs">出庫・入庫時に選択する担当者マスターの編集・バックアップが行えます。</p>
                     <div class="flex flex-wrap items-center gap-2 pt-1">
-                        <button onclick="exportWorkersCSV()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition flex items-center gap-1.5">
+                        <button onclick="exportWorkersCSV()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
                             <i class="fa-solid fa-file-csv"></i> 担当者CSVエクスポート
                         </button>
-                        <button onclick="exportWorkersExcelCompatible()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition flex items-center gap-1.5">
+                        <button onclick="exportWorkersExcelCompatible()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
                             <i class="fa-solid fa-file-excel"></i> 担当者Excel用出力 (.csv)
                         </button>
-                        <label class="bg-indigo-800 hover:bg-indigo-900 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition cursor-pointer flex items-center gap-1.5">
+                        <label class="bg-indigo-800 hover:bg-indigo-900 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition cursor-pointer flex items-center gap-1.5">
                             <i class="fa-solid fa-file-arrow-up"></i> 担当者インポート
                             <input type="file" id="importWorkersFile" accept=".csv" onchange="importWorkersCSV(event)" class="hidden">
                         </label>
@@ -399,35 +615,35 @@
                 </div>
 
                 <!-- Section 3: セキュリティ監査ログ -->
-                <div class="border border-amber-200 rounded-xl p-3.5 bg-amber-50/50 space-y-2">
+                <div class="border border-amber-200 dark:border-amber-900 rounded-xl p-3.5 bg-amber-50/50 dark:bg-amber-950/30 space-y-2">
                     <div class="flex justify-between items-center">
-                        <h4 class="font-bold text-amber-900 flex items-center gap-1.5 text-sm">
+                        <h4 class="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5 text-sm">
                             <i class="fa-solid fa-shield-halved text-amber-600"></i> セキュリティ監査ログ（インポート・エクスポート実施日時）
                         </h4>
-                        <button onclick="clearAuditLogs()" class="text-xs text-rose-600 hover:underline font-bold">ログクリア</button>
+                        <button onclick="clearAuditLogs()" class="text-xs text-rose-600 dark:text-rose-400 hover:underline font-bold">ログクリア</button>
                     </div>
-                    <div id="auditLogContainer" class="bg-white border border-amber-200 rounded-lg p-2.5 max-h-36 overflow-y-auto font-mono text-[11px] text-slate-700 space-y-1">
+                    <div id="auditLogContainer" class="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900 rounded-lg p-2.5 max-h-36 overflow-y-auto font-mono text-[11px] text-slate-700 dark:text-slate-300 space-y-1">
                         <!-- JS Dynamic Audit Logs -->
                     </div>
                 </div>
 
                 <!-- Section 4: システム初期化 -->
-                <div class="border border-rose-200 rounded-xl p-3.5 bg-rose-50 space-y-2">
-                    <h4 class="font-bold text-rose-800 text-sm">初期状態へ復元</h4>
-                    <p class="text-rose-600 text-xs">ローカル変更を破棄し、初期の全263型番・800台のマスターデータに復元します。</p>
-                    <button onclick="resetToMaster()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs transition shadow">
+                <div class="border border-rose-200 dark:border-rose-900 rounded-xl p-3.5 bg-rose-50 dark:bg-rose-950/30 space-y-2">
+                    <h4 class="font-bold text-rose-800 dark:text-rose-200 text-sm">初期状態へ復元</h4>
+                    <p class="text-rose-600 dark:text-rose-300 text-xs">ローカル変更を破棄し、初期の全263型番・800台のマスターデータに復元します。</p>
+                    <button onclick="resetToMaster()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition shadow">
                         全データ初期化
                     </button>
                 </div>
 
             </div>
-            <div class="bg-slate-50 px-4 sm:px-6 py-3 border-t border-slate-200 flex justify-end shrink-0">
-                <button onclick="closeModal('adminModal')" class="px-4 py-2 bg-slate-800 text-white font-bold rounded-lg text-xs">閉じる</button>
+            <div class="bg-slate-50 dark:bg-slate-900 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end shrink-0">
+                <button onclick="closeModal('adminModal')" class="px-4 py-2 bg-slate-800 text-white font-bold rounded-xl text-xs">閉じる</button>
             </div>
         </div>
     </div>
 
-    <!-- Toast Notification -->
+    <!-- Toast Notification Container -->
     <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <script>
@@ -636,11 +852,11 @@
             ["三郷在庫","パナソニック","FL40SSEX-N/37/F2",1,"三郷　棚上段（右）","",""],
             ["三郷在庫","東芝","FL35SSEX-D-HGU",1,"三郷　棚上段（右）","",""],
             ["三郷在庫","パナソニック","FL40SSE/37R",3,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","FL40SD",3,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","FL40SD",3,"三郷棚上段（右）","",""],
             ["三郷在庫","NEC","FL40SPO",5,"三郷　棚上段（右）","",""],
             ["三郷在庫","日立","FLR40EX-N/M/36A",24,"三郷　棚上段（右）","",""],
             ["三郷在庫","NEC","FL40SEX-L-HG",6,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","FL40SVI",14,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL40SVI",14,"三郷棚上段（右）","",""],
             ["三郷在庫","日立","FLR40EX-D/M/36A",2,"三郷　棚上段（右）","",""],
             ["三郷在庫","NEC","FL65SSEX-D/58-HG",0,"三郷　棚上段（右）","ビニールテープ巻内1本は捨てる","9本だした"],
             ["三郷在庫","看板ホルダー","100V20W",40,"三郷棚下段","",""],
@@ -654,8 +870,8 @@
             ["三郷在庫","東芝","GL15",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","日立","GL15",2,"三郷　棚上段（右）","",""],
             ["三郷在庫","NEC","GL15",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","GL15",1,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","GL20",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","パナソニック","GL15",1,"三郷棚上段（右）","",""],
+            ["三郷在庫","東芝","GL20",0,"三郷棚上段（右）","",""],
             ["三郷在庫","日立","GL20",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","NEC","GL20",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","パナソニック","GL20",0,"三郷　棚上段（右）","",""],
@@ -667,13 +883,13 @@
             ["三郷在庫","日立","GL6",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","NEC","GL6",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","パナソニック","GL6",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","GL10",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","東芝","GL10",0,"三郷棚上段（右）","",""],
             ["三郷在庫","日立","GL10",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","NEC","GL10",0,"三郷t棚上段（右）","",""],
             ["三郷在庫","パナソニック","GL10",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","東芝","GL4",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","日立","GL4",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","GL4",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","GL4",0,"三郷棚上段（右）","",""],
             ["三郷在庫","パナソニック","GL4",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","東芝","FL10BL",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","日立","FL10BL",0,"三郷　棚上段（右）","",""],
@@ -685,7 +901,7 @@
             ["三郷在庫","パナソニック","FL15BL",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","東芝","FL20SBL",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","日立","FL20SBL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","FL20SBL",0,"三郷　棚上段（右）","",""],
+            ["三郷在庫","NEC","FL20SBL",0,"三郷棚上段（右）","",""],
             ["三郷在庫","パナソニック","FL20SBL",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","東芝","FL30SBL",0,"三郷　棚上段（右）","",""],
             ["三郷在庫","日立","FL30SBL",0,"三郷　棚上段（右）","",""],
@@ -697,9 +913,18 @@
             ["三郷在庫","パナソニック","FL40SBL",0,"三郷　棚上段（右）","",""]
         ];
 
-        let masterData = JSON.parse(localStorage.getItem('misato_master_v11')) || initialMasterData;
-        let workerList = JSON.parse(localStorage.getItem('misato_workers_v1')) || initialWorkers;
-        let auditLogs = JSON.parse(localStorage.getItem('misato_audit_logs_v1')) || [];
+        let masterData = JSON.parse(localStorage.getItem('misato_master_v12')) || initialMasterData;
+        let workerList = JSON.parse(localStorage.getItem('misato_workers_v2')) || initialWorkers;
+        let auditLogs = JSON.parse(localStorage.getItem('misato_audit_logs_v2')) || [];
+        let transactionLogs = JSON.parse(localStorage.getItem('misato_trans_logs_v1')) || [];
+
+        // Pagination and Sorting state
+        let currentPage = 1;
+        let pageSize = 50;
+        let sortCol = -1;
+        let sortAsc = true;
+        let html5QrcodeScanner = null;
+        let categoryChart = null;
 
         window.onload = function() {
             populateSelects();
@@ -707,30 +932,46 @@
             renderTable();
             renderLastUpdatedDisplay();
             renderAuditLogs();
+            renderTransactionLogs();
+            checkTheme();
         };
 
+        // Dark mode control
+        function checkTheme() {
+            if (localStorage.getItem('theme') === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('themeIcon').className = 'fa-solid fa-sun text-amber-400';
+            }
+        }
+
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+                icon.className = 'fa-solid fa-moon text-base';
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                icon.className = 'fa-solid fa-sun text-amber-400';
+            }
+        }
+
         function saveData() {
-            localStorage.setItem('misato_master_v11', JSON.stringify(masterData));
-            localStorage.setItem('misato_workers_v1', JSON.stringify(workerList));
+            localStorage.setItem('misato_master_v12', JSON.stringify(masterData));
+            localStorage.setItem('misato_workers_v2', JSON.stringify(workerList));
             updateSummary();
             populateSelects();
         }
 
-        // 監査ログの記録
+        // 監査ログ
         function logAudit(action, details) {
             const now = new Date();
-            const yyyy = now.getFullYear();
-            const mm = String(now.getMonth() + 1).padStart(2, '0');
-            const dd = String(now.getDate()).padStart(2, '0');
-            const hh = String(now.getHours()).padStart(2, '0');
-            const mi = String(now.getMinutes()).padStart(2, '0');
-            const ss = String(now.getSeconds()).padStart(2, '0');
-            const timestamp = `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
-
-            const logEntry = { timestamp, action, details };
-            auditLogs.unshift(logEntry);
-            if (auditLogs.length > 50) auditLogs.pop(); // 最大50件保持
-            localStorage.setItem('misato_audit_logs_v1', JSON.stringify(auditLogs));
+            const timestamp = now.toLocaleString('ja-JP');
+            auditLogs.unshift({ timestamp, action, details });
+            if (auditLogs.length > 50) auditLogs.pop();
+            localStorage.setItem('misato_audit_logs_v2', JSON.stringify(auditLogs));
             renderAuditLogs();
         }
 
@@ -743,7 +984,7 @@
             }
             let html = '';
             auditLogs.forEach(log => {
-                html += `<div><span class="text-amber-600 font-bold">[${log.timestamp}]</span> <span class="text-slate-800 font-semibold">${log.action}:</span> <span class="text-slate-600">${log.details}</span></div>`;
+                html += `<div><span class="text-amber-600 dark:text-amber-400 font-bold">[${log.timestamp}]</span> <span class="font-semibold">${log.action}:</span> <span class="text-slate-500 dark:text-slate-400">${log.details}</span></div>`;
             });
             container.innerHTML = html;
         }
@@ -751,21 +992,59 @@
         function clearAuditLogs() {
             if (confirm("セキュリティ監査ログをクリアしますか？")) {
                 auditLogs = [];
-                localStorage.removeItem('misato_audit_logs_v1');
+                localStorage.removeItem('misato_audit_logs_v2');
                 renderAuditLogs();
                 showToast("監査ログをクリアしました。", "info");
             }
         }
 
-        // 最終更新日時の記録と描画
+        // 作業トランザクション履歴
+        function logTransaction(type, modelCode, qty, worker) {
+            const now = new Date();
+            const timestamp = now.toLocaleString('ja-JP');
+            transactionLogs.unshift({ timestamp, type, modelCode, qty, worker });
+            if (transactionLogs.length > 100) transactionLogs.pop();
+            localStorage.setItem('misato_trans_logs_v1', JSON.stringify(transactionLogs));
+            renderTransactionLogs();
+        }
+
+        function renderTransactionLogs() {
+            const tbody = document.getElementById('transactionLogBody');
+            if (!tbody) return;
+            if (transactionLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">作業履歴はありません</td></tr>`;
+                return;
+            }
+            let html = '';
+            transactionLogs.forEach(log => {
+                const isOut = log.type === '出庫';
+                const typeClass = isOut ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200';
+                html += `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                        <td class="p-2.5 text-slate-500 dark:text-slate-400 font-mono text-[11px]">${log.timestamp}</td>
+                        <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${typeClass}">${log.type}</span></td>
+                        <td class="p-2.5 font-mono font-bold text-slate-800 dark:text-slate-100">${escapeHtml(log.modelCode)}</td>
+                        <td class="p-2.5 text-right font-extrabold ${isOut ? 'text-rose-600' : 'text-emerald-600'}">${isOut ? '-' : '+'}${log.qty} 台</td>
+                        <td class="p-2.5 font-medium text-slate-700 dark:text-slate-300">${escapeHtml(log.worker)}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function clearTransactionLogs() {
+            if (confirm("作業履歴ログをクリアしますか？")) {
+                transactionLogs = [];
+                localStorage.removeItem('misato_trans_logs_v1');
+                renderTransactionLogs();
+                showToast("作業履歴をクリアしました。", "info");
+            }
+        }
+
+        // 最終更新日時
         function recordLastUpdated() {
             const now = new Date();
-            const yyyy = now.getFullYear();
-            const mm = now.getMonth() + 1;
-            const dd = now.getDate();
-            const hh = String(now.getHours()).padStart(2, '0');
-            const mi = String(now.getMinutes()).padStart(2, '0');
-            const formatted = `${yyyy}年${mm}月${dd}日 ${hh}:${mi}`;
+            const formatted = now.toLocaleString('ja-JP', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
             localStorage.setItem('misato_last_updated_time', formatted);
             renderLastUpdatedDisplay();
         }
@@ -776,7 +1055,7 @@
             if (el) el.innerText = stored;
         }
 
-        // 検索窓入力処理
+        // 検索窓処理
         function onSearchInput() {
             const input = document.getElementById('searchInput');
             const btn = document.getElementById('searchClearBtn');
@@ -798,6 +1077,7 @@
                 notice.classList.add('hidden');
             }
 
+            currentPage = 1;
             renderTable();
         }
 
@@ -810,13 +1090,15 @@
             btn.classList.add('hidden');
             notice.classList.add('hidden');
             badge.classList.add('hidden');
+            currentPage = 1;
             renderTable();
         }
 
-        // ダッシュボード数字クリックによるカテゴリ絞り込み
+        // 分類絞り込み
         function filterCategoryFromDashboard(cat) {
             const select = document.getElementById('categoryFilter');
             select.value = cat;
+            currentPage = 1;
             renderTable();
 
             const targetSection = document.getElementById('inventoryTableSection');
@@ -831,6 +1113,14 @@
             }
         }
 
+        function filterLowStock() {
+            const select = document.getElementById('stockFilter');
+            select.value = 'lowStock';
+            currentPage = 1;
+            renderTable();
+            showToast('要補充（0〜1台）アイテムを抽出しました', 'info');
+        }
+
         function populateSelects() {
             const dispatchSelect = document.getElementById('dispatchItemSelect');
             const receiveSelect = document.getElementById('receiveItemSelect');
@@ -842,8 +1132,8 @@
                 const qty = row[3];
                 html += `<option value="${idx}">【${cat}】${maker}${code} (在庫:${qty}台)</option>`;
             });
-            dispatchSelect.innerHTML = html;
-            receiveSelect.innerHTML = html;
+            if (dispatchSelect) dispatchSelect.innerHTML = html;
+            if (receiveSelect) receiveSelect.innerHTML = html;
 
             // 担当者セレクト
             const dispatchWorkerSelect = document.getElementById('dispatchWorkerSelect');
@@ -862,6 +1152,7 @@
 
             const counts = { 'ランプ': 0, '安定器': 0, '器具': 0, '三郷在庫': 0, '電材他': 0 };
             let totalQty = 0;
+            let lowStockCount = 0;
 
             masterData.forEach(row => {
                 const cat = row[0];
@@ -870,6 +1161,7 @@
                 if (counts[cat] !== undefined) {
                     counts[cat] += qty;
                 }
+                if (qty <= 1) lowStockCount++;
             });
 
             document.getElementById('statLampQty').innerText = counts['ランプ'];
@@ -878,17 +1170,34 @@
             document.getElementById('statMisatoQty').innerText = counts['三郷在庫'];
             document.getElementById('statElectricQty').innerText = counts['電材他'];
             document.getElementById('statTotalQty').innerText = totalQty;
+
+            const lowBadge = document.getElementById('statLowStockBadge');
+            if (lowBadge) {
+                lowBadge.innerText = `要補充 ${lowStockCount}件`;
+            }
+
+            renderCategoryChart(counts);
         }
 
         function getCategoryStyle(cat) {
             switch(cat) {
-                case '器具': return 'bg-blue-100 text-blue-800 border-blue-200';
-                case '安定器': return 'bg-amber-100 text-amber-800 border-amber-200';
-                case 'ランプ': return 'bg-purple-100 text-purple-800 border-purple-200';
-                case '電材他': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-                case '三郷在庫': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+                case '器具': return 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+                case '安定器': return 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+                case 'ランプ': return 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+                case '電材他': return 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+                case '三郷在庫': return 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800';
                 default: return 'bg-slate-100 text-slate-800 border-slate-200';
             }
+        }
+
+        function sortTable(colIndex) {
+            if (sortCol === colIndex) {
+                sortAsc = !sortAsc;
+            } else {
+                sortCol = colIndex;
+                sortAsc = true;
+            }
+            renderTable();
         }
 
         function renderTable() {
@@ -898,7 +1207,7 @@
             const tbody = document.getElementById('inventoryBody');
             tbody.innerHTML = '';
 
-            const filtered = masterData.filter((row) => {
+            let filtered = masterData.filter((row) => {
                 const matchesCategory = category === "" || row[0] === category;
                 const matchesSearch = row.some(cell => String(cell).toLowerCase().includes(search));
                 
@@ -912,46 +1221,84 @@
                     matchesStock = qty > 0 || isModelPrefixMatch;
                 } else if (stockFilter === 'outOfStock') {
                     matchesStock = qty === 0;
+                } else if (stockFilter === 'lowStock') {
+                    matchesStock = qty <= 1;
                 }
 
                 return matchesCategory && matchesSearch && matchesStock;
             });
 
+            // Sorting
+            if (sortCol >= 0) {
+                filtered.sort((a, b) => {
+                    let valA = a[sortCol];
+                    let valB = b[sortCol];
+                    if (sortCol === 3) {
+                        valA = parseInt(valA) || 0;
+                        valB = parseInt(valB) || 0;
+                    } else {
+                        valA = String(valA || '').toLowerCase();
+                        valB = String(valB || '').toLowerCase();
+                    }
+                    if (valA < valB) return sortAsc ? -1 : 1;
+                    if (valA > valB) return sortAsc ? 1 : -1;
+                    return 0;
+                });
+            }
+
             document.getElementById('searchResultCount').innerText = filtered.length;
             document.getElementById('filteredCountBadge').innerText = `${filtered.length}件表示`;
 
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">条件に該当するデータがありません。</td></tr>`;
+            // Pagination calculation
+            pageSize = parseInt(document.getElementById('pageSizeSelect').value) || 50;
+            const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            document.getElementById('currentPageNum').innerText = currentPage;
+            document.getElementById('totalPagesNum').innerText = totalPages;
+            document.getElementById('prevPageBtn').disabled = (currentPage <= 1);
+            document.getElementById('nextPageBtn').disabled = (currentPage >= totalPages);
+
+            const startIdx = (currentPage - 1) * pageSize;
+            const pageItems = filtered.slice(startIdx, startIdx + pageSize);
+
+            if (pageItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="py-10 text-center text-slate-400">条件に該当するデータがありません。</td></tr>`;
                 return;
             }
 
-            filtered.forEach(row => {
+            pageItems.forEach(row => {
                 const realIdx = masterData.indexOf(row);
                 const qty = parseInt(row[3]) || 0;
                 const catStyle = getCategoryStyle(row[0]);
 
-                let qtyCellContent = `<span class="${qty === 0 ? 'text-rose-600 font-bold' : 'text-slate-900'}">${qty}</span>`;
+                let qtyCellContent = `<span class="${qty === 0 ? 'text-rose-600 font-bold' : qty === 1 ? 'text-amber-600 font-bold' : 'text-slate-900 dark:text-white'}">${qty}</span>`;
                 if (qty === 0) {
-                    qtyCellContent += ` <span class="inline-block bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded ml-1">在庫切れ</span>`;
+                    qtyCellContent += ` <span class="inline-block bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-bold px-1.5 py-0.5 rounded ml-1">在庫切れ</span>`;
+                } else if (qty === 1) {
+                    qtyCellContent += ` <span class="inline-block bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded ml-1">残少</span>`;
                 }
 
                 const tr = document.createElement('tr');
-                tr.className = `hover:bg-slate-50 transition ${qty === 0 ? 'bg-rose-50/40' : ''}`;
+                tr.className = `hover:bg-slate-50 dark:hover:bg-slate-700/50 transition ${qty === 0 ? 'bg-rose-50/40 dark:bg-rose-950/20' : ''}`;
                 tr.innerHTML = `
                     <td class="py-3 px-4"><span class="border px-2 py-0.5 rounded text-[11px] font-bold ${catStyle}">${escapeHtml(row[0])}</span></td>
-                    <td class="py-3 px-4 font-medium text-slate-700 text-xs">${escapeHtml(row[1]) || '-'}</td>
-                    <td class="py-3 px-4 font-mono font-extrabold text-slate-900">${escapeHtml(row[2])}</td>
-                    <td class="py-3 px-4 text-right font-extrabold text-base">${qtyCellContent}</td>
-                    <td class="py-3 px-4 text-center"><span class="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded font-mono text-xs">${escapeHtml(row[4]) || '-'}</span></td>
-                    <td class="py-3 px-4 text-xs text-slate-600">${escapeHtml(row[5]) || '-'}</td>
-                    <td class="py-3 px-4 text-center text-xs text-slate-500">${escapeHtml(row[6]) || '-'}</td>
-                    <td class="py-3 px-4 text-center bg-blue-50/30">
-                        <div class="flex items-center justify-center gap-1.5">
-                            <button onclick="quickDispatch(${realIdx})" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1 active:scale-95" title="この品目を出庫">
-                                <i class="fa-solid fa-minus-circle"></i><span>出庫</span>
+                    <td class="py-3 px-4 font-medium text-slate-700 dark:text-slate-300 text-xs">${escapeHtml(row[1]) || '-'}</td>
+                    <td class="py-3 px-4 font-mono font-black text-slate-900 dark:text-white text-xs sm:text-sm">${escapeHtml(row[2])}</td>
+                    <td class="py-3 px-4 text-right font-extrabold text-sm sm:text-base">${qtyCellContent}</td>
+                    <td class="py-3 px-4 text-center"><span class="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-600 px-2 py-0.5 rounded font-mono text-xs">${escapeHtml(row[4]) || '-'}</span></td>
+                    <td class="py-3 px-4 text-xs text-slate-600 dark:text-slate-400">${escapeHtml(row[5]) || '-'}</td>
+                    <td class="py-3 px-4 text-center text-xs text-slate-500 dark:text-slate-400">${escapeHtml(row[6]) || '-'}</td>
+                    <td class="py-3 px-4 text-center bg-blue-50/30 dark:bg-blue-950/20">
+                        <div class="flex items-center justify-center gap-1">
+                            <button onclick="quickDispatch(${realIdx})" class="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1 active:scale-95" title="この品目を出庫">
+                                <i class="fa-solid fa-minus"></i><span>出庫</span>
                             </button>
-                            <button onclick="quickReceive(${realIdx})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1 active:scale-95" title="この品目を入庫">
-                                <i class="fa-solid fa-plus-circle"></i><span>入庫</span>
+                            <button onclick="quickReceive(${realIdx})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1 active:scale-95" title="この品目を入庫">
+                                <i class="fa-solid fa-plus"></i><span>入庫</span>
+                            </button>
+                            <button onclick="openQRModal(${realIdx})" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 p-1.5 rounded-lg text-xs transition" title="QRコード印刷">
+                                <i class="fa-solid fa-qrcode"></i>
                             </button>
                             <button onclick="deleteRow(${realIdx})" class="text-slate-300 hover:text-rose-600 p-1 rounded text-xs transition" title="削除">
                                 <i class="fa-solid fa-trash-can"></i>
@@ -963,7 +1310,10 @@
             });
         }
 
-        // 担当者プルダウン制御（カスタム入力切替）
+        function prevPage() { if (currentPage > 1) { currentPage--; renderTable(); } }
+        function nextPage() { currentPage++; renderTable(); }
+        function changePageSize() { currentPage = 1; renderTable(); }
+
         function onWorkerSelectChange(type) {
             const select = document.getElementById(type + 'WorkerSelect');
             const customInput = document.getElementById(type + 'WorkerCustom');
@@ -1033,6 +1383,7 @@
             }
 
             item[3] = currentQty - qty;
+            logTransaction('出庫', item[2], qty, worker);
             recordLastUpdated();
             saveData();
             renderTable();
@@ -1067,6 +1418,7 @@
             const currentQty = parseInt(item[3]) || 0;
 
             item[3] = currentQty + qty;
+            logTransaction('入庫', item[2], qty, worker);
             recordLastUpdated();
             saveData();
             renderTable();
@@ -1112,7 +1464,84 @@
             }
         }
 
-        // --- 在庫CSV / Excel出力・インポート ---
+        // QR Label Modal Generation
+        function openQRModal(idx) {
+            const item = masterData[idx];
+            document.getElementById('qrModelName').innerText = item[2];
+            document.getElementById('qrCategoryLoc').innerText = `${item[0]} | 保管場所: ${item[4] || '未設定'}`;
+            
+            const target = document.getElementById('qrCodeTarget');
+            target.innerHTML = '';
+            new QRCode(target, {
+                text: item[2],
+                width: 120,
+                height: 120,
+            });
+
+            openModal('qrModal');
+        }
+
+        // Camera QR Scanner Modal
+        function openScannerModal() {
+            openModal('scannerModal');
+            try {
+                html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 200, height: 200} }, false);
+                html5QrcodeScanner.render((decodedText) => {
+                    handleScannedCode(decodedText);
+                }, (error) => {});
+            } catch (err) {
+                console.log("Scanner initialization error", err);
+            }
+        }
+
+        function closeScannerModal() {
+            if (html5QrcodeScanner) {
+                try { html5QrcodeScanner.clear(); } catch(e){}
+            }
+            closeModal('scannerModal');
+        }
+
+        function simulateScanPrompt() {
+            const val = prompt("テストスキャンする型番を入力してください:");
+            if (val) handleScannedCode(val);
+        }
+
+        function handleScannedCode(codeText) {
+            closeScannerModal();
+            const searchInput = document.getElementById('searchInput');
+            searchInput.value = codeText.trim();
+            onSearchInput();
+            showToast(`[QR検出] 型番「${codeText}」を検索しました`, 'success');
+        }
+
+        // Analytics Chart rendering
+        function renderCategoryChart(counts) {
+            const ctx = document.getElementById('categoryPieChart');
+            if (!ctx) return;
+
+            if (categoryChart) {
+                categoryChart.destroy();
+            }
+
+            categoryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(counts),
+                    datasets: [{
+                        data: Object.values(counts),
+                        backgroundColor: ['#a855f7', '#f59e0b', '#3b82f6', '#6366f1', '#10b981']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
         function exportMasterCSV() {
             let csvContent = "\uFEFF大分類,製品,型番,台,場所,補足,出品\n";
             masterData.forEach(row => {
@@ -1134,7 +1563,6 @@
         }
 
         function exportInventoryExcelCompatible() {
-            // Excel対応BOM付きCSV
             let csvContent = "\uFEFF大分類\t製品\t型番\t台\t場所\t補足\t出品\n";
             masterData.forEach(row => {
                 const escaped = row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`);
@@ -1165,12 +1593,10 @@
                     const lines = text.split(/\r\n|\n/);
                     const newMaster = [];
                     
-                    // ヘッダーを除外してパース (簡易CSVパーサ)
                     for (let i = 1; i < lines.length; i++) {
                         const line = lines[i].trim();
                         if (!line) continue;
                         
-                        // タブ区切り or カンマ区切り判定
                         const delimiter = line.includes('\t') ? '\t' : ',';
                         const row = parseCSVLine(line, delimiter);
                         if (row.length >= 3 && row[2]) {
@@ -1205,7 +1631,6 @@
             reader.readAsText(file, 'UTF-8');
         }
 
-        // --- 担当者CSV / Excel出力・インポート ---
         function exportWorkersCSV() {
             let csvContent = "\uFEFF担当者名\n";
             workerList.forEach(w => {
@@ -1285,7 +1710,6 @@
             reader.readAsText(file, 'UTF-8');
         }
 
-        // CSV一行のダブルクォーテーションを考慮したパース関数
         function parseCSVLine(text, delimiter = ',') {
             const result = [];
             let inQuotes = false;
