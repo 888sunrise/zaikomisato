@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>全在庫状況まとめ - 三郷・事務所横断在庫管理</title>
+    <title>全在庫状況まとめ - 三郷・事務所横断在庫管理 (Firebase連携版)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -66,14 +66,19 @@
                     <div>
                         <h1 class="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                             <span>全在庫状況まとめ</span>
-                            <span class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-md hidden sm:inline">v2.5 Pro</span>
+                            <span class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-md hidden sm:inline">v2.5 Pro (Firebase版)</span>
                         </h1>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium flex items-center gap-2 flex-wrap">
                             <span>三郷倉庫・事務所内在庫 自動照会・リアルタイム引き当て</span>
                             <span class="text-slate-300 dark:text-slate-600">•</span>
+                            <span id="connection-status-pill" class="inline-flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded text-[11px]">
+                                <span id="connection-status-dot" class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
+                                <span id="connection-status-text">デモモード (未接続)</span>
+                            </span>
+                            <span class="text-slate-300 dark:text-slate-600">•</span>
                             <span class="inline-flex items-center gap-1 font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-[11px]">
                                 <i class="fa-solid fa-clock-rotate-left text-blue-600 dark:text-blue-400"></i>
-                                <span>最終更新: <span id="lastUpdatedDisplay">未更新</span></span>
+                                <span>最終同期: <span id="lastUpdatedDisplay">未更新</span></span>
                             </span>
                         </p>
                     </div>
@@ -84,6 +89,12 @@
                 <!-- Theme Toggle Button -->
                 <button onclick="toggleDarkMode()" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition" title="ダーク/ライトモード切替">
                     <i id="themeIcon" class="fa-solid fa-moon text-base"></i>
+                </button>
+
+                <!-- Firebase Config Button -->
+                <button onclick="openModal('configModal')" class="bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/80 text-amber-800 dark:text-amber-300 font-bold px-3 py-2 rounded-xl text-xs sm:text-sm border border-amber-200 dark:border-amber-800 transition flex items-center gap-1.5 active:scale-[0.98]">
+                    <i class="fa-solid fa-fire text-amber-500"></i>
+                    <span>Firebase設定</span>
                 </button>
 
                 <!-- Analytics Chart Toggle -->
@@ -99,8 +110,8 @@
                 </button>
 
                 <!-- Transaction History Button -->
-                <button onclick="openModal('historyModal')" class="bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/80 text-amber-800 dark:text-amber-300 font-bold px-3 py-2 rounded-xl text-xs sm:text-sm border border-amber-200 dark:border-amber-800 transition flex items-center gap-1.5 active:scale-[0.98]">
-                    <i class="fa-solid fa-history text-amber-600 dark:text-amber-400"></i>
+                <button onclick="openModal('historyModal')" class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-800 dark:text-slate-200 font-bold px-3 py-2 rounded-xl text-xs sm:text-sm transition flex items-center gap-1.5 active:scale-[0.98]">
+                    <i class="fa-solid fa-history text-slate-600 dark:text-slate-400"></i>
                     <span>入出庫履歴</span>
                 </button>
 
@@ -118,17 +129,19 @@
             </div>
         </header>
 
+        <!-- Verification Banner -->
         <div id="verificationAlert" class="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-3 sm:p-3.5 text-xs sm:text-sm text-emerald-900 dark:text-emerald-200 flex items-center justify-between shadow-sm">
             <div class="flex items-center gap-2.5">
                 <i class="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400 text-base sm:text-lg shrink-0"></i>
                 <div class="leading-tight">
-                    <span class="font-bold">データ自動検証完了：</span>
-                    <span id="verificationMessage">型番総数 263件 / 総台数 800台 (ランプ:457, 安定器:15, 器具:62, 三郷在庫:207, 電材他:59) 完全一致</span>
+                    <span class="font-bold">データ同期検証：</span>
+                    <span id="verificationMessage">型番総数 14件 / 総台数 615台 完全照会中</span>
                 </div>
             </div>
             <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 text-[10px] font-extrabold px-2.5 py-1 rounded-full shrink-0">精査済</span>
         </div>
 
+        <!-- Metrics Dashboard Cards -->
         <div class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
             
             <!-- Card 1: Total Model Count & Net Change -->
@@ -138,13 +151,13 @@
                     <span class="text-[10px] bg-blue-50 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full">全データ表示</span>
                 </div>
                 <div class="flex items-baseline gap-2 mt-2">
-                    <span id="statTotalModels" class="text-3xl sm:text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tight">263</span>
+                    <span id="statTotalModels" class="text-3xl sm:text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tight">0</span>
                     <span class="text-sm font-bold text-slate-700 dark:text-slate-300">件</span>
                     <span id="statLowStockBadge" class="ml-auto text-xs bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-extrabold px-2 py-0.5 rounded-full cursor-pointer hover:underline" onclick="event.stopPropagation(); filterLowStock();" title="在庫切れ・補充対象">要補充 0件</span>
                 </div>
                 <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs">
-                    <span class="text-slate-500 dark:text-slate-400 font-medium">当日の増減:</span>
-                    <span id="statTodayNetChange" class="font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">±0 台 (入庫 0 / 出庫 0)</span>
+                    <span class="text-slate-500 dark:text-slate-400 font-medium">累計入出庫履歴:</span>
+                    <span id="statTotalActions" class="font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">0 件</span>
                 </div>
                 <div class="mt-2 text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
                     <i class="fa-solid fa-database"></i> 統合一括管理マスター (三郷・事務所)
@@ -160,39 +173,40 @@
                 <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center divide-x-0 sm:divide-x divide-slate-100 dark:divide-slate-700">
                     <div onclick="filterCategoryFromDashboard('ランプ')" class="p-2 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-950/40 cursor-pointer transition active:scale-95" title="「ランプ」で絞り込み">
                         <div class="text-[11px] font-bold text-purple-600 dark:text-purple-400">ランプ</div>
-                        <div id="statLampQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">457</div>
+                        <div id="statLampQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">0</div>
                     </div>
                     <div onclick="filterCategoryFromDashboard('安定器')" class="p-2 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer transition active:scale-95" title="「安定器」で絞り込み">
                         <div class="text-[11px] font-bold text-amber-600 dark:text-amber-400">安定器</div>
-                        <div id="statBallastQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">15</div>
+                        <div id="statBallastQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">0</div>
                     </div>
                     <div onclick="filterCategoryFromDashboard('器具')" class="p-2 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer transition active:scale-95" title="「器具」で絞り込み">
                         <div class="text-[11px] font-bold text-blue-600 dark:text-blue-400">器具</div>
-                        <div id="statFixtureQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">62</div>
+                        <div id="statFixtureQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">0</div>
                     </div>
                     <div onclick="filterCategoryFromDashboard('三郷在庫')" class="p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer transition active:scale-95" title="「三郷在庫」で絞り込み">
                         <div class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">三郷在庫</div>
-                        <div id="statMisatoQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">207</div>
+                        <div id="statMisatoQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">0</div>
                     </div>
                     <div onclick="filterCategoryFromDashboard('電材他')" class="p-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer transition active:scale-95" title="「電材他」で絞り込み">
                         <div class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">電材他</div>
-                        <div id="statElectricQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">59</div>
+                        <div id="statElectricQty" class="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white mt-0.5">0</div>
                     </div>
                     <div onclick="filterCategoryFromDashboard('')" class="p-2 bg-blue-50/80 dark:bg-blue-900/40 hover:bg-blue-100 rounded-xl cursor-pointer transition active:scale-95" title="すべてのカテゴリを表示">
                         <div class="text-[11px] font-bold text-blue-700 dark:text-blue-300">合計台数</div>
-                        <div id="statTotalQty" class="text-lg sm:text-2xl font-black text-blue-600 dark:text-blue-400 mt-0.5">800</div>
+                        <div id="statTotalQty" class="text-lg sm:text-2xl font-black text-blue-600 dark:text-blue-400 mt-0.5">0</div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Search and Filter Control Bar -->
         <div id="inventoryTableSection" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-5 space-y-3">
             <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
                 
                 <!-- Search Bar with instant badge -->
                 <div class="relative flex-1 flex items-center">
                     <i class="fa-solid fa-magnifying-glass absolute left-4 text-slate-400 text-base"></i>
-                    <input type="text" id="searchInput" oninput="onSearchInput()" placeholder="型番、製品名、保管場所、補足で検索 (例: H4C、OD261、風呂場)..." class="w-full pl-11 pr-28 py-3 bg-slate-50 dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-xl text-sm sm:text-base font-semibold focus:outline-none focus:border-blue-600 dark:focus:border-blue-500 transition text-slate-800 dark:text-white">
+                    <input type="text" id="searchInput" oninput="onSearchInput()" placeholder="型番、製品名、保管場所、補足で検索 (例: OD261、風呂場、32形)..." class="w-full pl-11 pr-28 py-3 bg-slate-50 dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-xl text-sm sm:text-base font-semibold focus:outline-none focus:border-blue-600 dark:focus:border-blue-500 transition text-slate-800 dark:text-white">
                     
                     <!-- Search Count Badge -->
                     <span id="searchResultBadge" class="hidden absolute right-12 bg-blue-100 dark:bg-blue-900/80 text-blue-800 dark:text-blue-200 font-extrabold text-xs px-2.5 py-1 rounded-md transition-all">
@@ -205,7 +219,7 @@
                     </button>
                 </div>
 
-                <!-- Select Filters and Batch Operation Toggle -->
+                <!-- Select Filters -->
                 <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                     <select id="categoryFilter" onchange="renderTable()" class="border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200 font-bold focus:outline-none focus:border-blue-600">
                         <option value="">すべての大分類</option>
@@ -217,8 +231,8 @@
                     </select>
 
                     <select id="stockFilter" onchange="renderTable()" class="border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200 font-bold focus:outline-none focus:border-blue-600">
-                        <option value="inStock" selected>在庫あり (1台以上)</option>
                         <option value="all">すべての台数 (0台含む)</option>
+                        <option value="inStock" selected>在庫あり (1台以上)</option>
                         <option value="outOfStock">在庫なし (0台)</option>
                         <option value="lowStock">要補充 (1台以下)</option>
                     </select>
@@ -233,7 +247,7 @@
                 </div>
             </div>
 
-            <!-- Instant Search Info Prompt -->
+            <!-- Instant Search Prompt Notice -->
             <div id="searchPromptNotice" class="hidden bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-xl p-2.5 text-xs text-blue-900 dark:text-blue-200 flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <i class="fa-solid fa-bolt text-amber-500 text-sm"></i>
@@ -242,6 +256,7 @@
             </div>
         </div>
 
+        <!-- Main Inventory Table Container -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
             
             <!-- Table Header Toolbar -->
@@ -251,7 +266,7 @@
                         <i class="fa-solid fa-table-list text-blue-600 dark:text-blue-400 text-sm"></i>
                         <span>全在庫マスターリスト</span>
                     </span>
-                    <span id="filteredCountBadge" class="bg-blue-600 text-white font-extrabold px-2.5 py-0.5 rounded-full text-[11px]">263件表示</span>
+                    <span id="filteredCountBadge" class="bg-blue-600 text-white font-extrabold px-2.5 py-0.5 rounded-full text-[11px]">0件表示</span>
                 </div>
 
                 <!-- Pagination & Table Tools -->
@@ -268,6 +283,7 @@
                 </div>
             </div>
 
+            <!-- Scrollable Table -->
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[880px]">
                     <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
@@ -297,10 +313,17 @@
                     </tbody>
                 </table>
             </div>
+
+            <div id="empty-state" class="p-12 text-center hidden">
+                <div class="w-16 h-16 bg-slate-100 dark:bg-slate-700 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-box-open text-2xl"></i>
+                </div>
+                <h3 class="font-medium text-slate-700 dark:text-slate-300">該当する品目が見つかりません</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">検索条件を変更するか、新規登録を行ってください。</p>
+            </div>
         </div>
 
     </div>
-
 
     <!-- Modal 1: 出庫 (Dispatch) -->
     <div id="dispatchModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
@@ -338,6 +361,10 @@
                         <option value="">-- 担当者を選択 --</option>
                     </select>
                     <input type="text" id="dispatchWorkerCustom" placeholder="担当者名を入力してください" class="hidden w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">備考 / 用途</label>
+                    <input type="text" id="dispatchNote" placeholder="例: 三郷現場納品用" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500">
                 </div>
             </div>
             <div class="bg-slate-50 dark:bg-slate-900 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
@@ -379,6 +406,10 @@
                         <option value="">-- 担当者を選択 --</option>
                     </select>
                     <input type="text" id="receiveWorkerCustom" placeholder="担当者名を入力してください" class="hidden w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">備考 / 用途</label>
+                    <input type="text" id="receiveNote" placeholder="例: 余剰返納" class="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500">
                 </div>
             </div>
             <div class="bg-slate-50 dark:bg-slate-900 px-4 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
@@ -473,15 +504,15 @@
         </div>
     </div>
 
-    <!-- Modal 5: 入出庫履歴ログ モーダル (Transaction History) -->
+    <!-- Modal 5: 入出庫履歴ログ モーダル -->
     <div id="historyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-3xl w-full overflow-hidden flex flex-col max-h-[88vh] border border-slate-200 dark:border-slate-700">
-            <div class="bg-amber-600 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
+            <div class="bg-slate-700 px-4 sm:px-6 py-3.5 text-white flex justify-between items-center">
                 <h3 class="font-bold text-sm sm:text-lg flex items-center gap-2">
                     <i class="fa-solid fa-clock-rotate-left"></i>
                     <span>入出庫作業履歴ログ</span>
                 </h3>
-                <button onclick="closeModal('historyModal')" class="text-amber-100 hover:text-white p-1"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="closeModal('historyModal')" class="text-slate-300 hover:text-white p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 sm:p-6 overflow-y-auto space-y-3">
                 <div class="flex justify-between items-center text-xs">
@@ -497,6 +528,7 @@
                                 <th class="p-2.5">型番</th>
                                 <th class="p-2.5 text-right">数量</th>
                                 <th class="p-2.5">担当者</th>
+                                <th class="p-2.5">備考</th>
                             </tr>
                         </thead>
                         <tbody id="transactionLogBody" class="divide-y divide-slate-200 dark:divide-slate-700">
@@ -584,9 +616,6 @@
                         <button onclick="exportMasterCSV()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
                             <i class="fa-solid fa-file-csv"></i> 在庫CSVエクスポート
                         </button>
-                        <button onclick="exportInventoryExcelCompatible()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-file-excel"></i> 在庫Excel用出力 (.csv)
-                        </button>
                         <label class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition cursor-pointer flex items-center gap-1.5">
                             <i class="fa-solid fa-file-arrow-up"></i> 在庫インポート
                             <input type="file" id="importInventoryFile" accept=".csv" onchange="importInventoryCSV(event)" class="hidden">
@@ -604,9 +633,6 @@
                         <button onclick="exportWorkersCSV()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
                             <i class="fa-solid fa-file-csv"></i> 担当者CSVエクスポート
                         </button>
-                        <button onclick="exportWorkersExcelCompatible()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-file-excel"></i> 担当者Excel用出力 (.csv)
-                        </button>
                         <label class="bg-indigo-800 hover:bg-indigo-900 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition cursor-pointer flex items-center gap-1.5">
                             <i class="fa-solid fa-file-arrow-up"></i> 担当者インポート
                             <input type="file" id="importWorkersFile" accept=".csv" onchange="importWorkersCSV(event)" class="hidden">
@@ -618,7 +644,7 @@
                 <div class="border border-amber-200 dark:border-amber-900 rounded-xl p-3.5 bg-amber-50/50 dark:bg-amber-950/30 space-y-2">
                     <div class="flex justify-between items-center">
                         <h4 class="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5 text-sm">
-                            <i class="fa-solid fa-shield-halved text-amber-600"></i> セキュリティ監査ログ（インポート・エクスポート実施日時）
+                            <i class="fa-solid fa-shield-halved text-amber-600"></i> セキュリティ監査ログ
                         </h4>
                         <button onclick="clearAuditLogs()" class="text-xs text-rose-600 dark:text-rose-400 hover:underline font-bold">ログクリア</button>
                     </div>
@@ -630,7 +656,7 @@
                 <!-- Section 4: システム初期化 -->
                 <div class="border border-rose-200 dark:border-rose-900 rounded-xl p-3.5 bg-rose-50 dark:bg-rose-950/30 space-y-2">
                     <h4 class="font-bold text-rose-800 dark:text-rose-200 text-sm">初期状態へ復元</h4>
-                    <p class="text-rose-600 dark:text-rose-300 text-xs">ローカル変更を破棄し、初期の全263型番・800台のマスターデータに復元します。</p>
+                    <p class="text-rose-600 dark:text-rose-300 text-xs">ローカル変更を破棄し、初期のマスターデータに復元します。</p>
                     <button onclick="resetToMaster()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition shadow">
                         全データ初期化
                     </button>
@@ -643,664 +669,366 @@
         </div>
     </div>
 
+    <!-- Modal 9: Firebase Config Setup -->
+    <div id="configModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-slate-900 dark:text-white text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-fire text-amber-500"></i> Firebase 接続設定
+                </h3>
+                <button onclick="closeModal('configModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                チーム全体でリアルタイム同期を行うには、Firebaseコンソールから取得した `firebaseConfig` 設定オブジェクト（JSON形式）を入力してください。
+            </p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase mb-1">Firebase Configuration (JSON / JS Object)</label>
+                    <textarea id="config-json-input" rows="8" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "your-app.firebaseapp.com",
+  "projectId": "your-app-id",
+  "storageBucket": "your-app.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abcdef"
+}' class="w-full font-mono text-xs px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"></textarea>
+                </div>
+                <div class="pt-2 flex gap-2">
+                    <button id="btn-clear-config" type="button" class="py-2 px-3 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl text-xs hover:bg-red-50 dark:hover:bg-red-950/40">設定解除</button>
+                    <div class="flex-1 flex gap-2 justify-end">
+                        <button type="button" onclick="closeModal('configModal')" class="py-2.5 px-4 border border-slate-300 dark:border-slate-600 rounded-xl font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 text-sm">キャンセル</button>
+                        <button id="btn-save-config" type="button" class="py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium shadow-sm text-sm">接続を更新</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification Container -->
     <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <script>
-        // デフォルト担当者一覧
-        const initialWorkers = ["吉原", "栗木", "風間", "比嘉", "飯野", "須黒", "石川", "秋山"];
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            doc, 
+            addDoc, 
+            updateDoc, 
+            deleteDoc, 
+            onSnapshot, 
+            serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 名寄せ・クレンジング済みマスターデータ (全263件完全保持)
+        // Global State Management
+        window.inventoryItems = [];
+        window.transactionLogs = [];
+        window.workerList = ["吉原", "栗木", "風間", "比嘉", "飯野", "須黒", "石川", "秋山"];
+        window.auditLogs = [];
+
+        window.db = null;
+        window.auth = null;
+        window.isFirebaseConnected = false;
+
+        const APP_ID = "misato-office-inventory-v2";
+        const COLLECTION_ITEMS = "inventory_items";
+        const COLLECTION_LOGS = "inventory_logs";
+
+        // Pre-filled Master Data Backup
         const initialMasterData = [
-            ["器具","オーデリック","OD261770",7,"風呂場","2700K/φ150",""],
-            ["器具","オーデリック","OD261745",1,"風呂場","5000K/φ125",""],
-            ["器具","オーデリック","OD261773",1,"風呂場","5000K/φ150",""],
-            ["器具","オーデリック","OD261769",2,"風呂場","5000K/φ150",""],
-            ["器具","オーデリック","OD261894",0,"風呂場","2700K/φ100",""],
-            ["器具","オーデリック","OA075595",1,"風呂場","φ220→φ200",""],
-            ["器具","オーデリック","OA075596",1,"風呂場","φ195→φ175",""],
-            ["器具","遠藤照明","ERX9689N",3,"風呂場","昼白色/リニア  L：1200タイプ",""],
-            ["器具","遠藤照明","RAD415WW",4,"風呂場","温白色/FPL55Wタイプ",""],
-            ["器具","遠藤照明","ERD2527W",1,"風呂場","電球色/Φ200",""],
-            ["器具","遠藤照明","ERD2057W",2,"風呂場","電球色/Φ200/軒下","〇1"],
-            ["器具","遠藤照明","ERD4258W",1,"風呂場","3500K/φ125",""],
-            ["器具","遠藤照明","ERD3713W",1,"風呂場","4000K/φ150/無線",""],
-            ["器具","遠藤照明","ERD3715W",1,"風呂場","3000K/φ150/無線",""],
-            ["器具","遠藤照明","ERD3805W",1,"風呂場","3000K/φ150/非調光",""],
-            ["器具","遠藤照明","ERD3685W",1,"風呂場","3000K/φ150/PWM",""],
-            ["器具","遠藤照明","ERD3686W",1,"風呂場","3000K/φ150/PWM",""],
-            ["器具","遠藤照明","ERD3682W",1,"風呂場","3500K/φ150/PWM",""],
-            ["器具","遠藤照明","ERD3870W",2,"風呂場","3000K/φ125/非調光",""],
-            ["器具","遠藤照明","ERD3873W",1,"風呂場","3000K/φ125/非調光",""],
-            ["器具","遠藤照明","ERD3878W",1,"風呂場","3000K/φ125/非調光",""],
-            ["器具","遠藤照明","ERD3669W",1,"風呂場","3500K/φ125/PWM",""],
-            ["器具","遠藤照明","ERD3670W",1,"風呂場","3500K/φ125/PWM",""],
-            ["器具","遠藤照明","ERD3673W",1,"風呂場","3000K/φ125/PWM",""],
-            ["器具","遠藤照明","ERD3679W",1,"風呂場","3000K/φ125/PWM",""],
-            ["器具","遠藤照明","ERD3143W",1,"風呂場","3000K/φ125/非調光",""],
-            ["器具","遠藤照明","ERD3144W",1,"風呂場","3000K/φ125/非調光",""],
-            ["器具","遠藤照明","ERD3139W",1,"風呂場","4000K/φ125/非調光",""],
-            ["器具","遠藤照明","ERD3850W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD3852W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD3853W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD3854W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD3858W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD3863W",1,"風呂場","3500K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD3865W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD3653W",1,"風呂場","3000K/φ100/PWM",""],
-            ["器具","遠藤照明","ERD3655W",1,"風呂場","3000K/φ100/PWM",""],
-            ["器具","遠藤照明","ERD3661W",1,"風呂場","3000K/φ100/PWM",""],
-            ["器具","遠藤照明","ERD2132W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2139W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2432W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2437W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2438W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2440W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2442W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2449W",1,"風呂場","3500K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2452W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2454W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2455W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2457W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2458W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2144W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2145W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2148W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2153W",1,"風呂場","3500K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2155W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2157W",1,"風呂場","3000K/φ100/非調光",""],
-            ["器具","遠藤照明","ERD2158W",1,"風呂場","3000K/φ100/非調光",""],
-            ["安定器","三菱","LT75K1KYA100-9",1,"風呂場","",""],
-            ["安定器","岩崎","LE070035HSZ1/2.4-A1",6,"風呂場","",""],
-            ["安定器","フィリップス","HID-PV070　CDM100-242/A",0,"風呂場","",""],
-            ["安定器","フィリップス","EH-S150CDM100-242A",0,"風呂場","",""],
-            ["安定器","モデュレックス","E053CC12002",1,"風呂場","",""],
-            ["安定器","トライエンジニアリング","LF9840F",4,"ラック中段","",""],
-            ["安定器","DNL","ERC64(64~42)",1,"ラック中段","",""],
-            ["安定器","DNL","ERC42(42~25)",1,"ラック中段","",""],
-            ["安定器","不明","定番安定器各種",0,"ラック中段","",""],
-            ["安定器","藤井電機工業","EEHG-351/24AB1",1,"伊佐","",""],
-            ["安定器","岩崎","H4CC2A352",0,"ラック下段","",""],
-            ["電材他","JIMBO","WJP-1",6,"風呂場","",""],
-            ["電材他","JIMBO","WJD-3",5,"風呂場","",""],
-            ["電材他","JIMBO","WJD-1",1,"風呂場","",""],
-            ["電材他","JIMBO","WJP-2",1,"風呂場","",""],
-            ["電材他","JIMBO","WJD-NT",1,"風呂場","",""],
-            ["電材他","JIMBO","WJD-333",2,"風呂場","",""],
-            ["電材他","ナニワ","ホルダー　(40W形、安定器なし）",3,"ラック最上段","",""],
-            ["電材他","","ソケット各種",0,"ラック下段","",""],
-            ["電材他","Panasonic","FL9204018 　(CF200T4EN/C)",1,"ラック下段","",""],
-            ["電材他","Panasonic","FL9204019　(CF200T4EN)",1,"ラック下段","",""],
-            ["電材他","Panasonic","FL9204013　(CF200T4EN/C1)",0,"ラック下段","",""],
-            ["電材他","Panasonic","FK91220",2,"ラック下段","",""],
-            ["電材他","Panasonic","FK20005",1,"風呂場","",""],
-            ["電材他","Panasonic","FK20000",1,"風呂場","",""],
-            ["電材他","東亜産業","抗原検査ペン",2,"ラック下段","",""],
-            ["電材他","アイホン","IE-NXUG",0,"風呂場","",""],
-            ["電材他","DNL","LCF600 ラインコンセント",1,"ラック下段","",""],
-            ["電材他","河村電器","ZCS 2P2E20-30",6,"ラック下段","",""],
-            ["電材他","ナニワ","ホルダー　(110W形、安定器なし）",1,"ラック下段","",""],
-            ["電材他","東芝","防湿・防雨形蛍光灯器具(FL20W×1)",1,"ラック下段","",""],
-            ["電材他","東芝","防湿・防雨形蛍光灯器具(FL20W×2)",1,"ラック下段","",""],
-            ["電材他","日立","防湿・防雨形蛍光灯器具(FL20W×1)",1,"ラック下段","",""],
-            ["電材他","日立","防湿・防雨形蛍光灯器具(FL20W×2)",1,"ラック下段","",""],
-            ["電材他","東芝","防雨型ベースライト(FHF32W×2)",1,"ラック下段","",""],
-            ["電材他","パナソニック","非常用照明器具(FF41803J)",2,"ラック下段","",""],
-            ["電材他","パナソニック","非常用照明器具(FSG42001F)",1,"ラック下段","",""],
-            ["電材他","パナソニック","防湿・防雨形蛍光灯器具(FW42315)",1,"ラック下段","",""],
-            ["電材他","パナソニック","防湿・防雨形蛍光灯器具(FW21327)",1,"ラック下段","",""],
-            ["電材他","パナソニック","防湿・防雨形蛍光灯器具(FW21317)",1,"ラック下段","",""],
-            ["電材他","パナソニック","防湿・防雨形蛍光灯器具(FW11317)",1,"ラック下段","",""],
-            ["電材他","パナソニック","LED非常用照明器具(NNFB91605J)",2,"ラック下段","",""],
-            ["電材他","パナソニック","LED非常用照明器具(NNFB93605J)",2,"ラック下段","",""],
-            ["電材他","パナソニック","LED誘導灯(FA20312LE1)",1,"ラック下段","",""],
-            ["電材他","パナソニック","LED誘導灯(FA10312LE1)",1,"ラック下段","",""],
-            ["電材他","パナソニック","LED誘導灯(FA10322LE1)",1,"ラック下段","",""],
-            ["電材他","パナソニック","LED誘導灯(FA20322LE1)",1,"ラック下段","",""],
-            ["電材他","パナソニック","LED誘導灯(FA40312LE1)",1,"ラック下段","",""],
-            ["電材他","パナソニック","LED誘導灯(FA40322LE1)",1,"ラック下段","",""],
-            ["電材他","パナソニック","誘導灯表示板(FK20000)",1,"ラック下段","",""],
-            ["電材他","パナソニック","誘導灯表示板(FK20005)",1,"ラック下段","",""],
-            ["電材他","パナソニック","誘導灯表示板(FK10000)",1,"ラック下段","",""],
-            ["電材他","パナソニック","誘導灯表示板(FK10005)",1,"ラック下段","",""],
-            ["ランプ","パナソニック","BF110V120WH/D",1,"床３段目","",""],
-            ["ランプ","PHILIPS","CDM-T150W/830 G12",4,"床３段目","",""],
-            ["ランプ","FHILIPS","CDM-T150W/942",6,"床３段目","",""],
-            ["ランプ","PHILIPS","CDM-T70W/830 G12",0,"床３段目","",""],
-            ["ランプ","東芝","EFA15EL/11-Z",2,"床３段目","",""],
-            ["ランプ","NEC","EFA15EN/12-C5",10,"床３段目","",""],
-            ["ランプ","Panasonic","EFD15EL/10H2",0,"床３段目","",""],
-            ["ランプ","Panasonic","EFD15EL/10H2",0,"床３段目","",""],
-            ["ランプ","Panasonic","EFD15EL/12",0,"床３段目","",""],
-            ["ランプ","Panasonic","EFD15EN/12",1,"床３段目","",""],
-            ["ランプ","NEC","EFD25EL/20",0,"床３段目","",""],
-            ["ランプ","NEC","EFG13EN",1,"床３段目","",""],
-            ["ランプ","Panasonic","EFR15EL/12",0,"床３段目","",""],
-            ["ランプ","日立","FDL27EX-L",6,"床３段目","",""],
-            ["ランプ","日立","FG-1P",33,"ラック下段","",""],
-            ["ランプ","Panasonic","FG-4P",15,"ラック下段","みつからず",""],
-            ["ランプ","NEC","FHP32EW",8,"ラック下段","",""],
-            ["ランプ","日立","FHP32EW-J",1,"ラック下段","",""],
-            ["ランプ","日立","FHP32ED-J",1,"ラック下段","",""],
-            ["ランプ","日立","FHP32EN-J",1,"ラック下段","",""],
-            ["ランプ","日立","FHP45EW",1,"ラック下段","",""],
-            ["ランプ","日立","FHP45EN",1,"ラック下段","",""],
-            ["ランプ","日立","FHP45ED",1,"ラック下段","",""],
-            ["ランプ","日立","FHP45EL",1,"ラック下段","",""],
-            ["ランプ","日立","FHP36EX-N",1,"ラック下段","",""],
-            ["ランプ","日立","FHP36EX-D",1,"ラック下段","",""],
-            ["ランプ","日立","FHP36EX-W",1,"ラック下段","",""],
-            ["ランプ","三菱","FPL55EX-WW",1,"ラック下段","",""],
-            ["ランプ","日立","FL20SW-B",0,"ラック下段","",""],
-            ["ランプ","ウシオ","LDC2L-G-E17/D/27/3",20,"風呂場","","〇在庫あり"],
-            ["ランプ","パナソニック","FL20SS・EDK/18-PL",1,"ラック下段","",""],
-            ["ランプ","遠藤照明","ERK9708S",2,"ラック最上段","",""],
-            ["ランプ","オーデリック","No.320C",1,"ラック最上段","",""],
-            ["ランプ","オーデリック","No.340B",0,"ラック最上段","※１本須黒さん所持",""],
-            ["ランプ","日立","FL10W-B",2,"ラック下段","",""],
-            ["ランプ","三菱","HF300X",0,"カーペット上","",""],
-            ["ランプ","三菱","HF250X",0,"カーペット上","",""],
-            ["ランプ","三菱","HF200X",1,"カーペット上","",""],
-            ["ランプ","日立","HF100X",1,"カーペット上","",""],
-            ["ランプ","三菱","BHF200/220V300W",2,"カーペット上","",""],
-            ["ランプ","パナソニック","NH360FL/S",1,"ラック下段","",""],
-            ["ランプ","岩崎","MT150FSW",1,"ラック下段(外部)","",""],
-            ["ランプ","岩崎","MT70FCE-LW/S-2",1,"ラック下段(外部)","",""],
-            ["ランプ","ELPA","G-73H(W)",1,"ラック下段(外部)","",""],
-            ["ランプ","岩崎","M100LSH/BUP",1,"ラック下段(外部)","",""],
-            ["ランプ","岩崎","M250LSH/2/BUS",1,"ラック下段(外部)","",""],
-            ["ランプ","岩崎","M400LSH/U",1,"ラック下段(外部)","",""],
-            ["ランプ","岩崎","M400LSH/2/BUS",1,"ラック下段(外部)","",""],
-            ["ランプ","岩崎","M1000LS/BH",1,"ラック下段(外部)","",""],
-            ["ランプ","日立","FHF32EX-N-H",25,"ラック中段","",""],
-            ["ランプ","パナソニック","FHF32EX-N-HF2D",25,"ラック中段","",""],
-            ["ランプ","日立","FLR40SEX-N/M/36-A",25,"ラック中段","",""],
-            ["ランプ","パナソニック","FLR40S・W/M-X・36R",25,"ラック中段","",""],
-            ["ランプ","パナソニック","FLR40S・N/M-X・36R",25,"ラック中段","",""],
-            ["ランプ","日立","FLR40SW/M/36-B",25,"ラック中段","",""],
-            ["ランプ","東芝","FLR40S・D/M-X・36",25,"ラック中段","",""],
-            ["ランプ","日立","FL40SS・W/37-B",25,"ラック中段","",""],
-            ["ランプ","パナソニック","FL40SS・W/37R",25,"ラック中段","",""],
-            ["ランプ","東芝","FL40S・D",25,"ラック中段","",""],
-            ["ランプ","パナソニック","FL40S・D",25,"ラック中段","",""],
-            ["ランプ","NEC","FL40SBL",1,"ラック中段","",""],
-            ["ランプ","パナソニック","FL40SBL",1,"ラック中段","",""],
-            ["ランプ","東芝","FL40SBL",1,"ラック中段","",""],
-            ["ランプ","NEC","FL20SBL",2,"ラック中段","",""],
-            ["ランプ","パナソニック","FL20SBL",2,"ラック中段","",""],
-            ["ランプ","東芝","FL20SBL",2,"ラック中段","",""],
-            ["ランプ","日立","FL20SBL",2,"ラック中段","",""],
-            ["ランプ","パナソニック","FL15BL",2,"ラック中段","",""],
-            ["ランプ","東芝","FL15BL",2,"ラック中段","",""],
-            ["ランプ","日立","FL10BL",2,"ラック中段","",""],
-            ["ランプ","パナソニック","FL10BL",2,"ラック中段","",""],
-            ["ランプ","NEC","FL6BL",2,"ラック中段","",""],
-            ["ランプ","パナソニック","FL6BL",2,"ラック中段","",""],
-            ["ランプ","東芝","FL4BL",2,"ラック中段","",""],
-            ["ランプ","日立","FL4BL",2,"ラック下段","",""],
-            ["三郷在庫","ホタルクス","FL40SD",0,"三郷","",""],
-            ["三郷在庫","ナニワ","KS-401AC",15,"三郷","１台秋山さん保有",""],
-            ["三郷在庫","岩崎","F14/W",1,"三郷","",""],
-            ["三郷在庫","日立","FL32SEX75-KS",8,"三郷　棚上段（右）","",""],
-            ["三郷在庫","日立","FL30SEX75-KS",3,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","FL32SEX-D-HG",5,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","FL30SEX-KD",5,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","FL30S-WX-NF2",1,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","FL30S-EX-N-H",1,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","FL40SSEX-L/37F2",2,"三郷　棚上段（右）","",""],
-            ["三郷在庫","日立","FLR40SEX-WW/M/36B",2,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","FL40SSEX-N/37/F2",1,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","FL35SSEX-D-HGU",1,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","FL40SSE/37R",3,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","FL40SD",3,"三郷棚上段（右）","",""],
-            ["三郷在庫","NEC","FL40SPO",5,"三郷　棚上段（右）","",""],
-            ["三郷在庫","日立","FLR40EX-N/M/36A",24,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","FL40SEX-L-HG",6,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","FL40SVI",14,"三郷棚上段（右）","",""],
-            ["三郷在庫","日立","FLR40EX-D/M/36A",2,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","FL65SSEX-D/58-HG",0,"三郷　棚上段（右）","ビニールテープ巻内1本は捨てる","9本だした"],
-            ["三郷在庫","看板ホルダー","100V20W",40,"三郷棚下段","",""],
-            ["三郷在庫","看板ホルダー","100V30W",20,"三郷棚下段","",""],
-            ["三郷在庫","看板ホルダー","100V40W",21,"三郷棚下段","",""],
-            ["三郷在庫","看板ホルダー","200V30W",2,"三郷棚下段","",""],
-            ["三郷在庫","看板ホルダー","200V40W",15,"三郷棚下段","",""],
-            ["三郷在庫","看板ソケット","ソケット部のみ",12,"三郷棚下段","",""],
-            ["三郷在庫","看板ソケット","防水ソケット",0,"三郷棚下段","",""],
-            ["三郷在庫","看板ソケット","防水ソケット(リード線付)",0,"三郷棚下段","",""],
-            ["三郷在庫","東芝","GL15",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","日立","GL15",2,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","GL15",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","GL15",1,"三郷棚上段（右）","",""],
-            ["三郷在庫","東芝","GL20",0,"三郷棚上段（右）","",""],
-            ["三郷在庫","日立","GL20",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","GL20",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","GL20",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","GL30",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","日立","GL30",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","GL30",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","GL30",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","GL6",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","日立","GL6",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","GL6",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","GL6",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","GL10",0,"三郷棚上段（右）","",""],
-            ["三郷在庫","日立","GL10",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","GL10",0,"三郷t棚上段（右）","",""],
-            ["三郷在庫","パナソニック","GL10",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","GL4",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","日立","GL4",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","GL4",0,"三郷棚上段（右）","",""],
-            ["三郷在庫","パナソニック","GL4",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","FL10BL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","日立","FL10BL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","FL10BL",0,"三郷1棚上段（右）","",""],
-            ["三郷在庫","パナソニック","FL10BL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","FL15BL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","日立","FL15BL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","FL15BL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","FL15BL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","FL20SBL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","日立","FL20SBL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","FL20SBL",0,"三郷棚上段（右）","",""],
-            ["三郷在庫","パナソニック","FL20SBL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","FL30SBL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","日立","FL30SBL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","FL30SBL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","FL30SBL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","東芝","FL40SBL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","日立","FL40SBL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","NEC","FL40SBL",0,"三郷　棚上段（右）","",""],
-            ["三郷在庫","パナソニック","FL40SBL",0,"三郷　棚上段（右）","",""]
+            { category: "器具", maker: "オーデリック", code: "OD261770", stock: 7, location: "風呂場", note: "2700K/φ150", listing: "○" },
+            { category: "器具", maker: "オーデリック", code: "OD261745", stock: 1, location: "風呂場", note: "5000K/φ125", listing: "○" },
+            { category: "器具", maker: "オーデリック", code: "OD261773", stock: 1, location: "風呂場", note: "温白色/φ100", listing: "-" },
+            { category: "器具", maker: "パナソニック", code: "NNFB91605J", stock: 12, location: "三郷倉庫", note: "非常用照明器具", listing: "○" },
+            { category: "器具", maker: "コイズミ", code: "AD45138L", stock: 4, location: "事務所", note: "ダウンライト", listing: "○" },
+            { category: "安定器", maker: "岩崎電気", code: "H4TC1A51", stock: 5, location: "三郷倉庫", note: "水銀灯用安定器 400W", listing: "○" },
+            { category: "安定器", maker: "パナソニック", code: "FZ32298946", stock: 10, location: "三郷倉庫", note: "インバータバラスト", listing: "○" },
+            { category: "ランプ", maker: "東芝ライテック", code: "FHF32EX-N-H", stock: 120, location: "三郷倉庫", note: "32形 昼白色 25本入", listing: "○" },
+            { category: "ランプ", maker: "パナソニック", code: "FL40SS・EX-N/37", stock: 200, location: "事務所", note: "40形 直管蛍光灯", listing: "○" },
+            { category: "ランプ", maker: "三菱電機", code: "FPL36EX-N", stock: 137, location: "事務所", note: "コンパクト形蛍光灯", listing: "○" },
+            { category: "三郷在庫", maker: "オーデリック", code: "XG454025", stock: 45, location: "三郷倉庫", note: "屋外投光器 LED50W", listing: "○" },
+            { category: "三郷在庫", maker: "パナソニック", code: "NYK20012", stock: 42, location: "三郷倉庫", note: "遮光ルーバ", listing: "○" },
+            { category: "電材他", maker: "未来工業", code: "PVR22-2", stock: 18, location: "事務所", note: "露出スイッチボックス", listing: "○" },
+            { category: "電材他", maker: "パナソニック", code: "WT50519", stock: 9, location: "事務所", note: "埋込ほたるスイッチA", listing: "○" }
         ];
 
-        let masterData = JSON.parse(localStorage.getItem('misato_master_v12')) || initialMasterData;
-        let workerList = JSON.parse(localStorage.getItem('misato_workers_v2')) || initialWorkers;
-        let auditLogs = JSON.parse(localStorage.getItem('misato_audit_logs_v2')) || [];
-        let transactionLogs = JSON.parse(localStorage.getItem('misato_trans_logs_v1')) || [];
+        // App Table State
+        window.currentPage = 1;
+        window.pageSize = 50;
+        window.sortCol = -1;
+        window.sortAsc = true;
+        window.chartInstance = null;
+        window.html5QrcodeScanner = null;
 
-        // Pagination and Sorting state
-        let currentPage = 1;
-        let pageSize = 50;
-        let sortCol = -1;
-        let sortAsc = true;
-        let html5QrcodeScanner = null;
-        let categoryChart = null;
+        // Initialize Firebase / Demo Mode
+        window.initApp = function() {
+            const savedWorkers = localStorage.getItem("inventory_workers");
+            if (savedWorkers) {
+                try { window.workerList = JSON.parse(savedWorkers); } catch(e){}
+            }
 
-        window.onload = function() {
-            populateSelects();
-            updateSummary();
-            renderTable();
-            renderLastUpdatedDisplay();
-            renderAuditLogs();
-            renderTransactionLogs();
-            checkTheme();
+            const savedConfigStr = localStorage.getItem("firebase_team_config");
+            if (!savedConfigStr) {
+                console.log("Firebase config not found. Operating in Demo Mode.");
+                setupDemoMode();
+            } else {
+                try {
+                    const config = JSON.parse(savedConfigStr);
+                    const app = initializeApp(config);
+                    window.auth = getAuth(app);
+                    window.db = getFirestore(app);
+
+                    signInAnonymously(window.auth).then(() => {
+                        window.isFirebaseConnected = true;
+                        updateConnectionUI(true);
+                        subscribeFirestore();
+                        addAuditLog("Firebase リアルタイムデータベースに正常接続");
+                    }).catch(err => {
+                        console.error("Firebase auth error:", err);
+                        showToast("Firebase認証に失敗しました。デモモードで起動します。", "error");
+                        setupDemoMode();
+                    });
+                } catch(e) {
+                    console.error("Firebase Config Error:", e);
+                    setupDemoMode();
+                }
+            }
         };
 
-        // Dark mode control
-        function checkTheme() {
-            if (localStorage.getItem('theme') === 'dark') {
-                document.documentElement.classList.add('dark');
-                document.getElementById('themeIcon').className = 'fa-solid fa-sun text-amber-400';
-            }
-        }
-
-        function toggleDarkMode() {
-            const html = document.documentElement;
-            const icon = document.getElementById('themeIcon');
-            if (html.classList.contains('dark')) {
-                html.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
-                icon.className = 'fa-solid fa-moon text-base';
+        function setupDemoMode() {
+            window.isFirebaseConnected = false;
+            updateConnectionUI(false);
+            
+            const savedItems = localStorage.getItem("demo_inventory_items");
+            if (savedItems) {
+                try { window.inventoryItems = JSON.parse(savedItems); } catch(e){ loadMasterDefaults(); }
             } else {
-                html.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
-                icon.className = 'fa-solid fa-sun text-amber-400';
+                loadMasterDefaults();
             }
-        }
 
-        function saveData() {
-            localStorage.setItem('misato_master_v12', JSON.stringify(masterData));
-            localStorage.setItem('misato_workers_v2', JSON.stringify(workerList));
-            updateSummary();
-            populateSelects();
-        }
-
-        // 監査ログ
-        function logAudit(action, details) {
-            const now = new Date();
-            const timestamp = now.toLocaleString('ja-JP');
-            auditLogs.unshift({ timestamp, action, details });
-            if (auditLogs.length > 50) auditLogs.pop();
-            localStorage.setItem('misato_audit_logs_v2', JSON.stringify(auditLogs));
-            renderAuditLogs();
-        }
-
-        function renderAuditLogs() {
-            const container = document.getElementById('auditLogContainer');
-            if (!container) return;
-            if (auditLogs.length === 0) {
-                container.innerHTML = '<div class="text-slate-400 text-center py-2">ログ履歴はありません</div>';
-                return;
+            const savedLogs = localStorage.getItem("demo_inventory_logs");
+            if (savedLogs) {
+                try { window.transactionLogs = JSON.parse(savedLogs); } catch(e){ window.transactionLogs = []; }
             }
-            let html = '';
-            auditLogs.forEach(log => {
-                html += `<div><span class="text-amber-600 dark:text-amber-400 font-bold">[${log.timestamp}]</span> <span class="font-semibold">${log.action}:</span> <span class="text-slate-500 dark:text-slate-400">${log.details}</span></div>`;
-            });
-            container.innerHTML = html;
+
+            renderAll();
+            addAuditLog("デモモードで起動（ローカル保存）");
         }
 
-        function clearAuditLogs() {
-            if (confirm("セキュリティ監査ログをクリアしますか？")) {
-                auditLogs = [];
-                localStorage.removeItem('misato_audit_logs_v2');
-                renderAuditLogs();
-                showToast("監査ログをクリアしました。", "info");
-            }
+        function loadMasterDefaults() {
+            window.inventoryItems = initialMasterData.map((item, idx) => ({
+                id: 'demo-' + (idx + 1),
+                ...item
+            }));
+            saveDemoItems();
         }
 
-        // 作業トランザクション履歴
-        function logTransaction(type, modelCode, qty, worker) {
-            const now = new Date();
-            const timestamp = now.toLocaleString('ja-JP');
-            transactionLogs.unshift({ timestamp, type, modelCode, qty, worker });
-            if (transactionLogs.length > 100) transactionLogs.pop();
-            localStorage.setItem('misato_trans_logs_v1', JSON.stringify(transactionLogs));
-            renderTransactionLogs();
+        function saveDemoItems() {
+            localStorage.setItem("demo_inventory_items", JSON.stringify(window.inventoryItems));
         }
 
-        function renderTransactionLogs() {
-            const tbody = document.getElementById('transactionLogBody');
-            if (!tbody) return;
-            if (transactionLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">作業履歴はありません</td></tr>`;
-                return;
-            }
-            let html = '';
-            transactionLogs.forEach(log => {
-                const isOut = log.type === '出庫';
-                const typeClass = isOut ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200';
-                html += `
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                        <td class="p-2.5 text-slate-500 dark:text-slate-400 font-mono text-[11px]">${log.timestamp}</td>
-                        <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${typeClass}">${log.type}</span></td>
-                        <td class="p-2.5 font-mono font-bold text-slate-800 dark:text-slate-100">${escapeHtml(log.modelCode)}</td>
-                        <td class="p-2.5 text-right font-extrabold ${isOut ? 'text-rose-600' : 'text-emerald-600'}">${isOut ? '-' : '+'}${log.qty} 台</td>
-                        <td class="p-2.5 font-medium text-slate-700 dark:text-slate-300">${escapeHtml(log.worker)}</td>
-                    </tr>
-                `;
-            });
-            tbody.innerHTML = html;
+        function saveDemoLogs() {
+            localStorage.setItem("demo_inventory_logs", JSON.stringify(window.transactionLogs));
         }
 
-        function clearTransactionLogs() {
-            if (confirm("作業履歴ログをクリアしますか？")) {
-                transactionLogs = [];
-                localStorage.removeItem('misato_trans_logs_v1');
-                renderTransactionLogs();
-                showToast("作業履歴をクリアしました。", "info");
-            }
-        }
+        function updateConnectionUI(connected) {
+            const dot = document.getElementById("connection-status-dot");
+            const text = document.getElementById("connection-status-text");
+            const pill = document.getElementById("connection-status-pill");
 
-        // 最終更新日時
-        function recordLastUpdated() {
-            const now = new Date();
-            const formatted = now.toLocaleString('ja-JP', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-            localStorage.setItem('misato_last_updated_time', formatted);
-            renderLastUpdatedDisplay();
-        }
-
-        function renderLastUpdatedDisplay() {
-            const stored = localStorage.getItem('misato_last_updated_time') || '未更新';
-            const el = document.getElementById('lastUpdatedDisplay');
-            if (el) el.innerText = stored;
-        }
-
-        // 検索窓処理
-        function onSearchInput() {
-            const input = document.getElementById('searchInput');
-            const btn = document.getElementById('searchClearBtn');
-            const notice = document.getElementById('searchPromptNotice');
-            const badge = document.getElementById('searchResultBadge');
-            const query = input.value.trim();
-
-            if (query !== '') {
-                btn.classList.remove('hidden');
-                badge.classList.remove('hidden');
+            if (connected) {
+                dot.className = "w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse";
+                text.textContent = "Firebase リアルタイム同期中";
+                pill.className = "inline-flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded text-[11px]";
             } else {
-                btn.classList.add('hidden');
-                badge.classList.add('hidden');
-            }
-
-            if (query.length >= 3) {
-                notice.classList.remove('hidden');
-            } else {
-                notice.classList.add('hidden');
-            }
-
-            currentPage = 1;
-            renderTable();
-        }
-
-        function clearSearch() {
-            const input = document.getElementById('searchInput');
-            const btn = document.getElementById('searchClearBtn');
-            const notice = document.getElementById('searchPromptNotice');
-            const badge = document.getElementById('searchResultBadge');
-            input.value = '';
-            btn.classList.add('hidden');
-            notice.classList.add('hidden');
-            badge.classList.add('hidden');
-            currentPage = 1;
-            renderTable();
-        }
-
-        // 分類絞り込み
-        function filterCategoryFromDashboard(cat) {
-            const select = document.getElementById('categoryFilter');
-            select.value = cat;
-            currentPage = 1;
-            renderTable();
-
-            const targetSection = document.getElementById('inventoryTableSection');
-            if (targetSection) {
-                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-
-            if (cat) {
-                showToast(`大分類「${cat}」で絞り込みました`, 'info');
-            } else {
-                showToast('すべての分類を表示します', 'info');
+                dot.className = "w-2 h-2 rounded-full bg-amber-500 inline-block";
+                text.textContent = "デモモード (未接続)";
+                pill.className = "inline-flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded text-[11px]";
             }
         }
 
-        function filterLowStock() {
-            const select = document.getElementById('stockFilter');
-            select.value = 'lowStock';
-            currentPage = 1;
-            renderTable();
-            showToast('要補充（0〜1台）アイテムを抽出しました', 'info');
-        }
+        function subscribeFirestore() {
+            if (!window.db) return;
 
-        function populateSelects() {
-            const dispatchSelect = document.getElementById('dispatchItemSelect');
-            const receiveSelect = document.getElementById('receiveItemSelect');
-            let html = '<option value="">-- 対象型番を選択 --</option>';
-            masterData.forEach((row, idx) => {
-                const cat = row[0];
-                const maker = row[1] ? `[${row[1]}] ` : '';
-                const code = row[2];
-                const qty = row[3];
-                html += `<option value="${idx}">【${cat}】${maker}${code} (在庫:${qty}台)</option>`;
-            });
-            if (dispatchSelect) dispatchSelect.innerHTML = html;
-            if (receiveSelect) receiveSelect.innerHTML = html;
+            const itemsRef = collection(window.db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_ITEMS);
+            const logsRef = collection(window.db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_LOGS);
 
-            // 担当者セレクト
-            const dispatchWorkerSelect = document.getElementById('dispatchWorkerSelect');
-            const receiveWorkerSelect = document.getElementById('receiveWorkerSelect');
-            let workerHtml = '<option value="">-- 担当者を選択 --</option>';
-            workerList.forEach(w => {
-                workerHtml += `<option value="${w}">${w}</option>`;
-            });
-            workerHtml += `<option value="該当なし">（直接入力する...）</option>`;
-            if (dispatchWorkerSelect) dispatchWorkerSelect.innerHTML = workerHtml;
-            if (receiveWorkerSelect) receiveWorkerSelect.innerHTML = workerHtml;
-        }
-
-        function updateSummary() {
-            document.getElementById('statTotalModels').innerText = masterData.length;
-
-            const counts = { 'ランプ': 0, '安定器': 0, '器具': 0, '三郷在庫': 0, '電材他': 0 };
-            let totalQty = 0;
-            let lowStockCount = 0;
-
-            masterData.forEach(row => {
-                const cat = row[0];
-                const qty = parseInt(row[3]) || 0;
-                totalQty += qty;
-                if (counts[cat] !== undefined) {
-                    counts[cat] += qty;
+            onSnapshot(itemsRef, (snapshot) => {
+                if (snapshot.empty && window.inventoryItems.length === 0) {
+                    // Seed initial data if DB empty
+                    seedFirestore();
+                    return;
                 }
-                if (qty <= 1) lowStockCount++;
-            });
+                window.inventoryItems = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderAll();
+                updateLastUpdated();
+            }, err => console.error("Firestore Items listener error:", err));
 
-            document.getElementById('statLampQty').innerText = counts['ランプ'];
-            document.getElementById('statBallastQty').innerText = counts['安定器'];
-            document.getElementById('statFixtureQty').innerText = counts['器具'];
-            document.getElementById('statMisatoQty').innerText = counts['三郷在庫'];
-            document.getElementById('statElectricQty').innerText = counts['電材他'];
-            document.getElementById('statTotalQty').innerText = totalQty;
-
-            const lowBadge = document.getElementById('statLowStockBadge');
-            if (lowBadge) {
-                lowBadge.innerText = `要補充 ${lowStockCount}件`;
-            }
-
-            renderCategoryChart(counts);
+            onSnapshot(logsRef, (snapshot) => {
+                window.transactionLogs = snapshot.docs.map(d => {
+                    const data = d.data();
+                    return {
+                        id: d.id,
+                        ...data,
+                        timestamp: data.timestamp ? data.timestamp.toDate() : new Date()
+                    };
+                }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                renderLogs();
+            }, err => console.error("Firestore Logs listener error:", err));
         }
 
-        function getCategoryStyle(cat) {
-            switch(cat) {
-                case '器具': return 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800';
-                case '安定器': return 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800';
-                case 'ランプ': return 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800';
-                case '電材他': return 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
-                case '三郷在庫': return 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800';
-                default: return 'bg-slate-100 text-slate-800 border-slate-200';
+        async function seedFirestore() {
+            if (!window.db) return;
+            const itemsRef = collection(window.db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_ITEMS);
+            for (const item of initialMasterData) {
+                await addDoc(itemsRef, item);
             }
+            addAuditLog("初期マスターデータをFirestoreへシード完了");
         }
 
-        function sortTable(colIndex) {
-            if (sortCol === colIndex) {
-                sortAsc = !sortAsc;
-            } else {
-                sortCol = colIndex;
-                sortAsc = true;
-            }
+        function updateLastUpdated() {
+            const now = new Date();
+            document.getElementById("lastUpdatedDisplay").textContent = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        window.renderAll = function() {
             renderTable();
-        }
+            renderStats();
+            renderLogs();
+            updateWorkerDropdowns();
+        };
 
-        function renderTable() {
-            const search = document.getElementById('searchInput').value.toLowerCase().trim();
-            const category = document.getElementById('categoryFilter').value;
-            const stockFilter = document.getElementById('stockFilter').value;
-            const tbody = document.getElementById('inventoryBody');
-            tbody.innerHTML = '';
+        window.renderStats = function() {
+            const items = window.inventoryItems;
+            const totalModels = items.length;
+            const lowStockCount = items.filter(i => Number(i.stock) <= 1).length;
 
-            let filtered = masterData.filter((row) => {
-                const matchesCategory = category === "" || row[0] === category;
-                const matchesSearch = row.some(cell => String(cell).toLowerCase().includes(search));
-                
-                let matchesStock = true;
-                const qty = parseInt(row[3]) || 0;
+            let totalQty = 0, lampQty = 0, ballastQty = 0, fixtureQty = 0, misatoQty = 0, electricQty = 0;
 
-                const modelCode = String(row[2] || '').toLowerCase();
-                const isModelPrefixMatch = search.length >= 3 && (modelCode.startsWith(search) || modelCode.includes(search));
-
-                if (stockFilter === 'inStock') {
-                    matchesStock = qty > 0 || isModelPrefixMatch;
-                } else if (stockFilter === 'outOfStock') {
-                    matchesStock = qty === 0;
-                } else if (stockFilter === 'lowStock') {
-                    matchesStock = qty <= 1;
-                }
-
-                return matchesCategory && matchesSearch && matchesStock;
+            items.forEach(i => {
+                const s = Number(i.stock) || 0;
+                totalQty += s;
+                if (i.category === "ランプ") lampQty += s;
+                else if (i.category === "安定器") ballastQty += s;
+                else if (i.category === "器具") fixtureQty += s;
+                else if (i.category === "三郷在庫") misatoQty += s;
+                else if (i.category === "電材他") electricQty += s;
             });
+
+            document.getElementById("statTotalModels").textContent = totalModels;
+            document.getElementById("statLowStockBadge").textContent = `要補充 ${lowStockCount}件`;
+            document.getElementById("statTotalActions").textContent = `${window.transactionLogs.length} 件`;
+
+            document.getElementById("statLampQty").textContent = lampQty;
+            document.getElementById("statBallastQty").textContent = ballastQty;
+            document.getElementById("statFixtureQty").textContent = fixtureQty;
+            document.getElementById("statMisatoQty").textContent = misatoQty;
+            document.getElementById("statElectricQty").textContent = electricQty;
+            document.getElementById("statTotalQty").textContent = totalQty;
+
+            document.getElementById("verificationMessage").textContent = `型番総数 ${totalModels}件 / 総台数 ${totalQty}台 照合完了`;
+        };
+
+        window.getFilteredItems = function() {
+            const query = (document.getElementById("searchInput").value || "").trim().toLowerCase();
+            const catFilter = document.getElementById("categoryFilter").value;
+            const stockFilter = document.getElementById("stockFilter").value;
+
+            return window.inventoryItems.filter(item => {
+                const textMatch = !query || 
+                    (item.code || "").toLowerCase().includes(query) ||
+                    (item.maker || "").toLowerCase().includes(query) ||
+                    (item.location || "").toLowerCase().includes(query) ||
+                    (item.note || "").toLowerCase().includes(query) ||
+                    (item.category || "").toLowerCase().includes(query);
+
+                const catMatch = !catFilter || item.category === catFilter;
+
+                const stockNum = Number(item.stock) || 0;
+                let stockMatch = true;
+                if (stockFilter === "inStock") stockMatch = stockNum > 0;
+                else if (stockFilter === "outOfStock") stockMatch = stockNum === 0;
+                else if (stockFilter === "lowStock") stockMatch = stockNum <= 1;
+
+                return textMatch && catMatch && stockMatch;
+            });
+        };
+
+        window.renderTable = function() {
+            let filtered = getFilteredItems();
 
             // Sorting
-            if (sortCol >= 0) {
+            if (window.sortCol >= 0) {
+                const keys = ['category', 'maker', 'code', 'stock', 'location'];
+                const key = keys[window.sortCol];
                 filtered.sort((a, b) => {
-                    let valA = a[sortCol];
-                    let valB = b[sortCol];
-                    if (sortCol === 3) {
-                        valA = parseInt(valA) || 0;
-                        valB = parseInt(valB) || 0;
-                    } else {
-                        valA = String(valA || '').toLowerCase();
-                        valB = String(valB || '').toLowerCase();
+                    let valA = a[key] || '';
+                    let valB = b[key] || '';
+                    if (key === 'stock') {
+                        valA = Number(valA);
+                        valB = Number(valB);
                     }
-                    if (valA < valB) return sortAsc ? -1 : 1;
-                    if (valA > valB) return sortAsc ? 1 : -1;
+                    if (valA < valB) return window.sortAsc ? -1 : 1;
+                    if (valA > valB) return window.sortAsc ? 1 : -1;
                     return 0;
                 });
             }
 
-            document.getElementById('searchResultCount').innerText = filtered.length;
-            document.getElementById('filteredCountBadge').innerText = `${filtered.length}件表示`;
+            const total = filtered.length;
+            const totalPages = Math.ceil(total / window.pageSize) || 1;
+            if (window.currentPage > totalPages) window.currentPage = totalPages;
 
-            // Pagination calculation
-            pageSize = parseInt(document.getElementById('pageSizeSelect').value) || 50;
-            const totalPages = Math.ceil(filtered.length / pageSize) || 1;
-            if (currentPage > totalPages) currentPage = totalPages;
+            const startIdx = (window.currentPage - 1) * window.pageSize;
+            const paged = filtered.slice(startIdx, startIdx + window.pageSize);
 
-            document.getElementById('currentPageNum').innerText = currentPage;
-            document.getElementById('totalPagesNum').innerText = totalPages;
-            document.getElementById('prevPageBtn').disabled = (currentPage <= 1);
-            document.getElementById('nextPageBtn').disabled = (currentPage >= totalPages);
+            const tbody = document.getElementById("inventoryBody");
+            const emptyState = document.getElementById("empty-state");
+            tbody.innerHTML = "";
 
-            const startIdx = (currentPage - 1) * pageSize;
-            const pageItems = filtered.slice(startIdx, startIdx + pageSize);
-
-            if (pageItems.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="py-10 text-center text-slate-400">条件に該当するデータがありません。</td></tr>`;
-                return;
+            if (paged.length === 0) {
+                emptyState.classList.remove("hidden");
+            } else {
+                emptyState.classList.add("hidden");
             }
 
-            pageItems.forEach(row => {
-                const realIdx = masterData.indexOf(row);
-                const qty = parseInt(row[3]) || 0;
-                const catStyle = getCategoryStyle(row[0]);
+            paged.forEach(item => {
+                const stockNum = Number(item.stock) || 0;
+                const isLow = stockNum <= 1;
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50 dark:hover:bg-slate-700/50 transition border-b border-slate-200 dark:border-slate-700/60";
 
-                let qtyCellContent = `<span class="${qty === 0 ? 'text-rose-600 font-bold' : qty === 1 ? 'text-amber-600 font-bold' : 'text-slate-900 dark:text-white'}">${qty}</span>`;
-                if (qty === 0) {
-                    qtyCellContent += ` <span class="inline-block bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-bold px-1.5 py-0.5 rounded ml-1">在庫切れ</span>`;
-                } else if (qty === 1) {
-                    qtyCellContent += ` <span class="inline-block bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded ml-1">残少</span>`;
-                }
-
-                const tr = document.createElement('tr');
-                tr.className = `hover:bg-slate-50 dark:hover:bg-slate-700/50 transition ${qty === 0 ? 'bg-rose-50/40 dark:bg-rose-950/20' : ''}`;
                 tr.innerHTML = `
-                    <td class="py-3 px-4"><span class="border px-2 py-0.5 rounded text-[11px] font-bold ${catStyle}">${escapeHtml(row[0])}</span></td>
-                    <td class="py-3 px-4 font-medium text-slate-700 dark:text-slate-300 text-xs">${escapeHtml(row[1]) || '-'}</td>
-                    <td class="py-3 px-4 font-mono font-black text-slate-900 dark:text-white text-xs sm:text-sm">${escapeHtml(row[2])}</td>
-                    <td class="py-3 px-4 text-right font-extrabold text-sm sm:text-base">${qtyCellContent}</td>
-                    <td class="py-3 px-4 text-center"><span class="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-600 px-2 py-0.5 rounded font-mono text-xs">${escapeHtml(row[4]) || '-'}</span></td>
-                    <td class="py-3 px-4 text-xs text-slate-600 dark:text-slate-400">${escapeHtml(row[5]) || '-'}</td>
-                    <td class="py-3 px-4 text-center text-xs text-slate-500 dark:text-slate-400">${escapeHtml(row[6]) || '-'}</td>
-                    <td class="py-3 px-4 text-center bg-blue-50/30 dark:bg-blue-950/20">
-                        <div class="flex items-center justify-center gap-1">
-                            <button onclick="quickDispatch(${realIdx})" class="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1 active:scale-95" title="この品目を出庫">
-                                <i class="fa-solid fa-minus"></i><span>出庫</span>
+                    <td class="py-3 px-4 font-bold">
+                        <span class="inline-block px-2.5 py-1 text-xs rounded-lg ${getCategoryBadgeClass(item.category)}">
+                            ${escapeHtml(item.category)}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-slate-600 dark:text-slate-300 font-medium">${escapeHtml(item.maker || '-')}</td>
+                    <td class="py-3 px-4 font-mono font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base">${escapeHtml(item.code)}</td>
+                    <td class="py-3 px-4 text-right">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black ${isLow ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'}">
+                            ${isLow ? '<i class="fa-solid fa-triangle-exclamation"></i>' : ''}
+                            ${stockNum} 台
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center text-slate-700 dark:text-slate-300 font-bold">${escapeHtml(item.location || '-')}</td>
+                    <td class="py-3 px-4 text-slate-500 dark:text-slate-400 text-xs">${escapeHtml(item.note || '-')}</td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="text-xs px-2 py-0.5 rounded ${item.listing === '○' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 font-bold' : 'text-slate-400'}">${item.listing || '-'}</span>
+                    </td>
+                    <td class="py-3 px-4 text-center bg-slate-50/50 dark:bg-slate-900/30">
+                        <div class="inline-flex items-center gap-1.5">
+                            <button onclick="openDispatchForItem('${item.id}')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs transition shadow-sm active:scale-95 flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-up-from-bracket"></i> 出庫
                             </button>
-                            <button onclick="quickReceive(${realIdx})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1 active:scale-95" title="この品目を入庫">
-                                <i class="fa-solid fa-plus"></i><span>入庫</span>
+                            <button onclick="openReceiveForItem('${item.id}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition shadow-sm active:scale-95 flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-down-to-bracket"></i> 入庫
                             </button>
-                            <button onclick="openQRModal(${realIdx})" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 p-1.5 rounded-lg text-xs transition" title="QRコード印刷">
-                                <i class="fa-solid fa-qrcode"></i>
+                            <button onclick="showQRCodeLabel('${escapeHtml(item.code)}', '${escapeHtml(item.category)}', '${escapeHtml(item.location)}')" class="p-1.5 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition" title="QRラベル表示">
+                                <i class="fa-solid fa-qrcode text-base"></i>
                             </button>
-                            <button onclick="deleteRow(${realIdx})" class="text-slate-300 hover:text-rose-600 p-1 rounded text-xs transition" title="削除">
+                            <button onclick="deleteItem('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 transition" title="削除">
                                 <i class="fa-solid fa-trash-can"></i>
                             </button>
                         </div>
@@ -1308,227 +1036,355 @@
                 `;
                 tbody.appendChild(tr);
             });
-        }
 
-        function prevPage() { if (currentPage > 1) { currentPage--; renderTable(); } }
-        function nextPage() { currentPage++; renderTable(); }
-        function changePageSize() { currentPage = 1; renderTable(); }
+            document.getElementById("filteredCountBadge").textContent = `${total}件表示`;
+            document.getElementById("currentPageNum").textContent = window.currentPage;
+            document.getElementById("totalPagesNum").textContent = totalPages;
 
-        function onWorkerSelectChange(type) {
-            const select = document.getElementById(type + 'WorkerSelect');
-            const customInput = document.getElementById(type + 'WorkerCustom');
-            if (select.value === '該当なし') {
-                customInput.classList.remove('hidden');
-                customInput.value = '';
-                customInput.focus();
-            } else {
-                customInput.classList.add('hidden');
-                customInput.value = select.value;
+            document.getElementById("prevPageBtn").disabled = window.currentPage <= 1;
+            document.getElementById("nextPageBtn").disabled = window.currentPage >= totalPages;
+        };
+
+        function getCategoryBadgeClass(cat) {
+            switch(cat) {
+                case 'ランプ': return 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800';
+                case '安定器': return 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
+                case '器具': return 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
+                case '三郷在庫': return 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800';
+                case '電材他': return 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800';
+                default: return 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300';
             }
         }
 
-        function getWorkerName(type) {
-            const select = document.getElementById(type + 'WorkerSelect');
-            const customInput = document.getElementById(type + 'WorkerCustom');
-            if (select.value === '該当なし') {
-                return customInput.value.trim();
-            }
-            return select.value;
-        }
-
-        function quickDispatch(idx) {
-            document.getElementById('dispatchItemSelect').value = idx;
-            document.getElementById('dispatchWorkerSelect').value = "";
-            document.getElementById('dispatchWorkerCustom').value = "";
-            document.getElementById('dispatchWorkerCustom').classList.add('hidden');
-            onDispatchSelectChange();
+        window.openDispatchForItem = function(id) {
+            populateItemDropdowns(id);
             openModal('dispatchModal');
-        }
+            onDispatchSelectChange();
+        };
 
-        function quickReceive(idx) {
-            document.getElementById('receiveItemSelect').value = idx;
-            document.getElementById('receiveWorkerSelect').value = "";
-            document.getElementById('receiveWorkerCustom').value = "";
-            document.getElementById('receiveWorkerCustom').classList.add('hidden');
-            onReceiveSelectChange();
+        window.openReceiveForItem = function(id) {
+            populateItemDropdowns(id);
             openModal('receiveModal');
-        }
+            onReceiveSelectChange();
+        };
 
-        function onDispatchSelectChange() {
-            const idx = document.getElementById('dispatchItemSelect').value;
-            const badge = document.getElementById('dispatchInfoBadge');
-            if (idx === "") {
-                badge.classList.add('hidden');
-                return;
-            }
-            const item = masterData[idx];
-            document.getElementById('dispatchCurrentQty').innerText = `${item[3]} 台`;
-            document.getElementById('dispatchLocation').innerText = item[4] || '未設定';
-            badge.classList.remove('hidden');
-        }
+        function populateItemDropdowns(selectedId) {
+            const dispatchSel = document.getElementById("dispatchItemSelect");
+            const receiveSel = document.getElementById("receiveItemSelect");
 
-        function executeDispatch() {
-            const idx = document.getElementById('dispatchItemSelect').value;
-            const qty = parseInt(document.getElementById('dispatchQty').value, 10);
-            const worker = getWorkerName('dispatch');
+            dispatchSel.innerHTML = "";
+            receiveSel.innerHTML = "";
 
-            if (idx === "") return showToast("対象の型番を選択してください。", "error");
-            if (!qty || qty <= 0) return showToast("正しく台数を入力してください。", "error");
-            if (!worker) return showToast("担当者を選択または入力してください。", "error");
-
-            const item = masterData[idx];
-            const currentQty = parseInt(item[3]) || 0;
-            if (currentQty < qty) {
-                return showToast(`引き当てエラー: 現在庫数(${currentQty}台)を超える持ち出しはできません。`, "error");
-            }
-
-            item[3] = currentQty - qty;
-            logTransaction('出庫', item[2], qty, worker);
-            recordLastUpdated();
-            saveData();
-            renderTable();
-            closeModal('dispatchModal');
-
-            document.getElementById('dispatchQty').value = 1;
-            showToast(`[出庫完了] ${item[2]} を ${qty}台 引き当てました (${worker})`, "success");
-        }
-
-        function onReceiveSelectChange() {
-            const idx = document.getElementById('receiveItemSelect').value;
-            const badge = document.getElementById('receiveInfoBadge');
-            if (idx === "") {
-                badge.classList.add('hidden');
-                return;
-            }
-            const item = masterData[idx];
-            document.getElementById('receiveCurrentQty').innerText = `${item[3]} 台`;
-            badge.classList.remove('hidden');
-        }
-
-        function executeReceive() {
-            const idx = document.getElementById('receiveItemSelect').value;
-            const qty = parseInt(document.getElementById('receiveQty').value, 10);
-            const worker = getWorkerName('receive');
-
-            if (idx === "") return showToast("対象の型番を選択してください。", "error");
-            if (!qty || qty <= 0) return showToast("正しく台数を入力してください。", "error");
-            if (!worker) return showToast("担当者を選択または入力してください。", "error");
-
-            const item = masterData[idx];
-            const currentQty = parseInt(item[3]) || 0;
-
-            item[3] = currentQty + qty;
-            logTransaction('入庫', item[2], qty, worker);
-            recordLastUpdated();
-            saveData();
-            renderTable();
-            closeModal('receiveModal');
-
-            document.getElementById('receiveQty').value = 1;
-            showToast(`[入庫完了] ${item[2]} を ${qty}台 返納・持ち込みました (${worker})`, "success");
-        }
-
-        function saveNewItem() {
-            const category = document.getElementById('newCategory').value;
-            const maker = document.getElementById('newMaker').value.trim();
-            const code = document.getElementById('newModelCode').value.trim();
-            const qty = parseInt(document.getElementById('newQty').value, 10) || 0;
-            const location = document.getElementById('newLocation').value.trim();
-            const note = document.getElementById('newNote').value.trim();
-
-            if (!code) return showToast("型番は必須項目です。", "error");
-
-            masterData.push([category, maker, code, qty, location, note, ""]);
-            recordLastUpdated();
-            saveData();
-            renderTable();
-            closeModal('newItemModal');
-
-            document.getElementById('newMaker').value = '';
-            document.getElementById('newModelCode').value = '';
-            document.getElementById('newQty').value = 1;
-            document.getElementById('newLocation').value = '';
-            document.getElementById('newNote').value = '';
-
-            showToast(`[新規登録完了] ${code} をマスターに追加しました。`, "success");
-        }
-
-        function deleteRow(idx) {
-            const item = masterData[idx];
-            if (confirm(`型番「${item[2]}」を削除しますか？`)) {
-                masterData.splice(idx, 1);
-                recordLastUpdated();
-                saveData();
-                renderTable();
-                showToast("削除しました。", "info");
-            }
-        }
-
-        // QR Label Modal Generation
-        function openQRModal(idx) {
-            const item = masterData[idx];
-            document.getElementById('qrModelName').innerText = item[2];
-            document.getElementById('qrCategoryLoc').innerText = `${item[0]} | 保管場所: ${item[4] || '未設定'}`;
-            
-            const target = document.getElementById('qrCodeTarget');
-            target.innerHTML = '';
-            new QRCode(target, {
-                text: item[2],
-                width: 120,
-                height: 120,
+            window.inventoryItems.forEach(item => {
+                const optStr = `${item.code} (${item.maker || ''} / 在庫:${item.stock}台)`;
+                const opt1 = new Option(optStr, item.id);
+                const opt2 = new Option(optStr, item.id);
+                dispatchSel.add(opt1);
+                receiveSel.add(opt2);
             });
 
-            openModal('qrModal');
+            if (selectedId) {
+                dispatchSel.value = selectedId;
+                receiveSel.value = selectedId;
+            }
         }
 
-        // Camera QR Scanner Modal
-        function openScannerModal() {
+        window.onDispatchSelectChange = function() {
+            const id = document.getElementById("dispatchItemSelect").value;
+            const item = window.inventoryItems.find(i => i.id === id);
+            const badge = document.getElementById("dispatchInfoBadge");
+            if (item) {
+                badge.classList.remove("hidden");
+                document.getElementById("dispatchCurrentQty").textContent = `${item.stock} 台`;
+                document.getElementById("dispatchLocation").textContent = item.location || '-';
+            } else {
+                badge.classList.add("hidden");
+            }
+        };
+
+        window.onReceiveSelectChange = function() {
+            const id = document.getElementById("receiveItemSelect").value;
+            const item = window.inventoryItems.find(i => i.id === id);
+            const badge = document.getElementById("receiveInfoBadge");
+            if (item) {
+                badge.classList.remove("hidden");
+                document.getElementById("receiveCurrentQty").textContent = `${item.stock} 台`;
+            } else {
+                badge.classList.add("hidden");
+            }
+        };
+
+        window.executeDispatch = async function() {
+            const id = document.getElementById("dispatchItemSelect").value;
+            const qty = parseInt(document.getElementById("dispatchQty").value, 10);
+            const worker = getWorkerValue('dispatch');
+            const note = document.getElementById("dispatchNote").value;
+
+            if (!id || isNaN(qty) || qty <= 0 || !worker) {
+                alert("型番、持ち出し台数、担当者名を正しく設定してください。");
+                return;
+            }
+
+            const item = window.inventoryItems.find(i => i.id === id);
+            if (!item) return;
+
+            const currentStock = Number(item.stock) || 0;
+            const newStock = Math.max(0, currentStock - qty);
+
+            await updateStockInDb(id, newStock, 'OUT', qty, item.code, worker, note);
+            closeModal('dispatchModal');
+            showToast(`${item.code} を ${qty}台 出庫引き当てしました`);
+        };
+
+        window.executeReceive = async function() {
+            const id = document.getElementById("receiveItemSelect").value;
+            const qty = parseInt(document.getElementById("receiveQty").value, 10);
+            const worker = getWorkerValue('receive');
+            const note = document.getElementById("receiveNote").value;
+
+            if (!id || isNaN(qty) || qty <= 0 || !worker) {
+                alert("型番、返納台数、担当者名を正しく設定してください。");
+                return;
+            }
+
+            const item = window.inventoryItems.find(i => i.id === id);
+            if (!item) return;
+
+            const currentStock = Number(item.stock) || 0;
+            const newStock = currentStock + qty;
+
+            await updateStockInDb(id, newStock, 'IN', qty, item.code, worker, note);
+            closeModal('receiveModal');
+            showToast(`${item.code} を ${qty}台 返納入庫しました`);
+        };
+
+        async function updateStockInDb(id, newStock, type, qty, code, worker, note) {
+            if (window.isFirebaseConnected && window.db) {
+                try {
+                    const itemDoc = doc(window.db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_ITEMS, id);
+                    await updateDoc(itemDoc, { stock: newStock });
+
+                    const logsRef = collection(window.db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_LOGS);
+                    await addDoc(logsRef, {
+                        itemId: id,
+                        code: code,
+                        type: type,
+                        quantity: qty,
+                        worker: worker,
+                        note: note || '',
+                        timestamp: serverTimestamp()
+                    });
+                } catch(e) {
+                    console.error("Firestore update error:", e);
+                    alert("更新に失敗しました。");
+                }
+            } else {
+                // Demo Local update
+                const item = window.inventoryItems.find(i => i.id === id);
+                if (item) item.stock = newStock;
+                saveDemoItems();
+
+                window.transactionLogs.unshift({
+                    id: 'log-' + Date.now(),
+                    code: code,
+                    type: type,
+                    quantity: qty,
+                    worker: worker,
+                    note: note || '',
+                    timestamp: new Date()
+                });
+                saveDemoLogs();
+                renderAll();
+            }
+        }
+
+        window.saveNewItem = async function() {
+            const category = document.getElementById("newCategory").value;
+            const maker = document.getElementById("newMaker").value;
+            const code = document.getElementById("newModelCode").value.trim();
+            const stock = parseInt(document.getElementById("newQty").value, 10) || 0;
+            const location = document.getElementById("newLocation").value;
+            const note = document.getElementById("newNote").value;
+
+            if (!code) {
+                alert("型番を入力してください。");
+                return;
+            }
+
+            const newItem = { category, maker, code, stock, location, note, listing: "○" };
+
+            if (window.isFirebaseConnected && window.db) {
+                try {
+                    const itemsRef = collection(window.db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_ITEMS);
+                    await addDoc(itemsRef, newItem);
+                } catch(e) { console.error("Add item error:", e); }
+            } else {
+                newItem.id = 'demo-' + Date.now();
+                window.inventoryItems.push(newItem);
+                saveDemoItems();
+                renderAll();
+            }
+
+            closeModal('newItemModal');
+            showToast(`新規型番 ${code} を登録しました`);
+        };
+
+        window.deleteItem = async function(id) {
+            const item = window.inventoryItems.find(i => i.id === id);
+            if (!item) return;
+            if (!confirm(`型番「${item.code}」をマスターから削除しますか？`)) return;
+
+            if (window.isFirebaseConnected && window.db) {
+                try {
+                    const docRef = doc(window.db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_ITEMS, id);
+                    await deleteDoc(docRef);
+                } catch(e) { console.error("Delete error:", e); }
+            } else {
+                window.inventoryItems = window.inventoryItems.filter(i => i.id !== id);
+                saveDemoItems();
+                renderAll();
+            }
+            showToast(`型番 ${item.code} を削除しました`);
+        };
+
+        function renderLogs() {
+            const tbody = document.getElementById("transactionLogBody");
+            tbody.innerHTML = "";
+
+            window.transactionLogs.slice(0, 50).forEach(log => {
+                const tr = document.createElement("tr");
+                const isIn = log.type === 'IN';
+                const dateStr = log.timestamp ? new Date(log.timestamp).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+
+                tr.innerHTML = `
+                    <td class="p-2.5 font-mono text-slate-400">${dateStr}</td>
+                    <td class="p-2.5">
+                        <span class="px-2 py-0.5 rounded font-bold text-[10px] ${isIn ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'}">
+                            ${isIn ? '入庫' : '出庫'}
+                        </span>
+                    </td>
+                    <td class="p-2.5 font-mono font-bold text-slate-800 dark:text-slate-200">${escapeHtml(log.code)}</td>
+                    <td class="p-2.5 text-right font-black ${isIn ? 'text-emerald-600' : 'text-rose-600'}">${isIn ? '+' : '-'}${log.quantity} 台</td>
+                    <td class="p-2.5 font-bold text-slate-700 dark:text-slate-300">${escapeHtml(log.worker || '-')}</td>
+                    <td class="p-2.5 text-slate-400 truncate max-w-[120px]">${escapeHtml(log.note || '-')}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.clearTransactionLogs = function() {
+            if (!confirm("入出庫履歴ログをクリアしますか？")) return;
+            window.transactionLogs = [];
+            if (!window.isFirebaseConnected) saveDemoLogs();
+            renderLogs();
+            showToast("履歴ログをクリアしました");
+        };
+
+        // Worker Management
+        function updateWorkerDropdowns() {
+            ['dispatch', 'receive'].forEach(type => {
+                const sel = document.getElementById(`${type}WorkerSelect`);
+                sel.innerHTML = '<option value="">-- 担当者を選択 --</option>';
+                window.workerList.forEach(w => {
+                    sel.add(new Option(w, w));
+                });
+                sel.add(new Option("+ カスタム入力...", "CUSTOM"));
+            });
+        }
+
+        window.onWorkerSelectChange = function(type) {
+            const sel = document.getElementById(`${type}WorkerSelect`);
+            const customInput = document.getElementById(`${type}WorkerCustom`);
+            if (sel.value === "CUSTOM") {
+                customInput.classList.remove("hidden");
+            } else {
+                customInput.classList.add("hidden");
+            }
+        };
+
+        function getWorkerValue(type) {
+            const sel = document.getElementById(`${type}WorkerSelect`);
+            if (sel.value === "CUSTOM") {
+                return document.getElementById(`${type}WorkerCustom`).value.trim();
+            }
+            return sel.value;
+        }
+
+        window.openScannerModal = function() {
             openModal('scannerModal');
             try {
-                html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 200, height: 200} }, false);
-                html5QrcodeScanner.render((decodedText) => {
-                    handleScannedCode(decodedText);
-                }, (error) => {});
-            } catch (err) {
-                console.log("Scanner initialization error", err);
+                if (!window.html5QrcodeScanner) {
+                    window.html5QrcodeScanner = new Html5Qrcode("reader");
+                }
+                window.html5QrcodeScanner.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 220, height: 220 } },
+                    onScanSuccess,
+                    onScanError
+                ).catch(err => {
+                    document.getElementById("reader").innerHTML = `<span class="text-rose-400 p-4">カメラを起動できませんでした。手動テスト入力をご利用ください。</span>`;
+                });
+            } catch(e) { console.error("QR scanner error:", e); }
+        };
+
+        window.closeScannerModal = function() {
+            if (window.html5QrcodeScanner) {
+                window.html5QrcodeScanner.stop().then(() => {
+                    closeModal('scannerModal');
+                }).catch(() => closeModal('scannerModal'));
+            } else {
+                closeModal('scannerModal');
             }
-        }
+        };
 
-        function closeScannerModal() {
-            if (html5QrcodeScanner) {
-                try { html5QrcodeScanner.clear(); } catch(e){}
-            }
-            closeModal('scannerModal');
-        }
-
-        function simulateScanPrompt() {
-            const val = prompt("テストスキャンする型番を入力してください:");
-            if (val) handleScannedCode(val);
-        }
-
-        function handleScannedCode(codeText) {
+        function onScanSuccess(decodedText) {
             closeScannerModal();
-            const searchInput = document.getElementById('searchInput');
-            searchInput.value = codeText.trim();
+            document.getElementById("searchInput").value = decodedText;
             onSearchInput();
-            showToast(`[QR検出] 型番「${codeText}」を検索しました`, 'success');
+            showToast(`QRスキャン検知: ${decodedText}`);
         }
 
-        // Analytics Chart rendering
-        function renderCategoryChart(counts) {
-            const ctx = document.getElementById('categoryPieChart');
-            if (!ctx) return;
+        function onScanError(err) {
+            // Ignore frame scan errors
+        }
 
-            if (categoryChart) {
-                categoryChart.destroy();
+        window.simulateScanPrompt = function() {
+            const code = prompt("検索・読み取りテスト用の型番を入力してください:");
+            if (code) {
+                onScanSuccess(code);
             }
+        };
 
-            categoryChart = new Chart(ctx, {
+        window.showQRCodeLabel = function(code, category, location) {
+            document.getElementById("qrModelName").textContent = code;
+            document.getElementById("qrCategoryLoc").textContent = `${category} / 場所: ${location || '未設定'}`;
+            
+            const target = document.getElementById("qrCodeTarget");
+            target.innerHTML = "";
+            new QRCode(target, {
+                text: code,
+                width: 140,
+                height: 140
+            });
+            openModal('qrModal');
+        };
+
+        // Analytics Modal Chart
+        window.initAnalyticsChart = function() {
+            const ctx = document.getElementById("categoryPieChart").getContext("2d");
+            const catMap = { 'ランプ': 0, '安定器': 0, '器具': 0, '三郷在庫': 0, '電材他': 0 };
+            window.inventoryItems.forEach(i => {
+                if (catMap[i.category] !== undefined) catMap[i.category] += (Number(i.stock) || 0);
+            });
+
+            if (window.chartInstance) window.chartInstance.destroy();
+
+            window.chartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: Object.keys(counts),
+                    labels: Object.keys(catMap),
                     datasets: [{
-                        data: Object.values(counts),
+                        data: Object.values(catMap),
                         backgroundColor: ['#a855f7', '#f59e0b', '#3b82f6', '#6366f1', '#10b981']
                     }]
                 },
@@ -1540,248 +1396,251 @@
                     }
                 }
             });
-        }
+        };
 
-        function exportMasterCSV() {
-            let csvContent = "\uFEFF大分類,製品,型番,台,場所,補足,出品\n";
-            masterData.forEach(row => {
-                const escaped = row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`);
-                csvContent += escaped.join(",") + "\n";
+        window.exportMasterCSV = function() {
+            let csv = "\uFEFF大分類,メーカー,型番,台数,場所,補足,出品\n";
+            window.inventoryItems.forEach(i => {
+                csv += `"${i.category}","${i.maker || ''}","${i.code}","${i.stock}","${i.location || ''}","${i.note || ''}","${i.listing || ''}"\n`;
             });
+            downloadFile(csv, `在庫マスター_${getFormattedDate()}.csv`, "text/csv;charset=utf-8;");
+            addAuditLog("在庫マスターCSVを出力");
+        };
 
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.setAttribute("href", url);
-            a.setAttribute("download", `全在庫状況まとめ_${getTodayYMD()}.csv`);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-
-            logAudit("在庫CSVエクスポート", `ファイル名: 全在庫状況まとめ_${getTodayYMD()}.csv`);
-            showToast("在庫CSVを出力しました。", "success");
-        }
-
-        function exportInventoryExcelCompatible() {
-            let csvContent = "\uFEFF大分類\t製品\t型番\t台\t場所\t補足\t出品\n";
-            masterData.forEach(row => {
-                const escaped = row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`);
-                csvContent += escaped.join("\t") + "\n";
-            });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.setAttribute("href", url);
-            a.setAttribute("download", `全在庫状況まとめ_Excel用_${getTodayYMD()}.csv`);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-
-            logAudit("在庫Excel用出力", `ファイル名: 全在庫状況まとめ_Excel用_${getTodayYMD()}.csv`);
-            showToast("Excel互換形式の在庫ファイルを出力しました。", "success");
-        }
-
-        function importInventoryCSV(event) {
-            const file = event.target.files[0];
+        window.importInventoryCSV = function(evt) {
+            const file = evt.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                try {
-                    const text = e.target.result;
-                    const lines = text.split(/\r\n|\n/);
-                    const newMaster = [];
-                    
-                    for (let i = 1; i < lines.length; i++) {
-                        const line = lines[i].trim();
-                        if (!line) continue;
-                        
-                        const delimiter = line.includes('\t') ? '\t' : ',';
-                        const row = parseCSVLine(line, delimiter);
-                        if (row.length >= 3 && row[2]) {
-                            newMaster.push([
-                                row[0] || '器具',
-                                row[1] || '',
-                                row[2] || '',
-                                parseInt(row[3]) || 0,
-                                row[4] || '',
-                                row[5] || '',
-                                row[6] || ''
-                            ]);
-                        }
-                    }
+                const text = e.target.result;
+                const lines = text.split(/\r\n|\n/);
+                let importedCount = 0;
 
-                    if (newMaster.length > 0) {
-                        masterData = newMaster;
-                        recordLastUpdated();
-                        saveData();
-                        renderTable();
-                        logAudit("在庫インポート完了", `読込件数: ${newMaster.length}件 (ファイル名: ${file.name})`);
-                        showToast(`在庫データをインポートしました (${newMaster.length}件)`, "success");
-                    } else {
-                        showToast("有効な在庫データが見つかりませんでした。", "error");
+                lines.forEach((line, idx) => {
+                    if (idx === 0 || !line.trim()) return;
+                    const cols = line.split(',').map(c => c.replace(/^"|"$/g, '').trim());
+                    if (cols.length >= 3 && cols[2]) {
+                        window.inventoryItems.push({
+                            id: 'imp-' + Date.now() + '-' + idx,
+                            category: cols[0] || 'その他',
+                            maker: cols[1] || '',
+                            code: cols[2],
+                            stock: parseInt(cols[3], 10) || 0,
+                            location: cols[4] || '',
+                            note: cols[5] || '',
+                            listing: cols[6] || '○'
+                        });
+                        importedCount++;
                     }
-                } catch (err) {
-                    console.error(err);
-                    showToast("ファイルの読み込みに失敗しました。", "error");
-                }
-                event.target.value = '';
+                });
+
+                if (!window.isFirebaseConnected) saveDemoItems();
+                renderAll();
+                showToast(`${importedCount}件の在庫データをインポートしました`);
+                addAuditLog(`在庫CSVインポート完了 (${importedCount}件)`);
             };
-            reader.readAsText(file, 'UTF-8');
-        }
+            reader.readAsText(file);
+        };
 
-        function exportWorkersCSV() {
-            let csvContent = "\uFEFF担当者名\n";
-            workerList.forEach(w => {
-                csvContent += `"${w.replace(/"/g, '""')}"\n`;
-            });
+        window.exportWorkersCSV = function() {
+            let csv = "\uFEFF担当者名\n";
+            window.workerList.forEach(w => csv += `"${w}"\n`);
+            downloadFile(csv, `担当者マスター_${getFormattedDate()}.csv`, "text/csv;charset=utf-8;");
+            addAuditLog("担当者マスターCSVを出力");
+        };
 
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.setAttribute("href", url);
-            a.setAttribute("download", `担当一覧管理シート_${getTodayYMD()}.csv`);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-
-            logAudit("担当者CSVエクスポート", `ファイル名: 担当一覧管理シート_${getTodayYMD()}.csv`);
-            showToast("担当者CSVを出力しました。", "success");
-        }
-
-        function exportWorkersExcelCompatible() {
-            let csvContent = "\uFEFF担当者名\n";
-            workerList.forEach(w => {
-                csvContent += `"${w.replace(/"/g, '""')}"\n`;
-            });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.setAttribute("href", url);
-            a.setAttribute("download", `担当一覧管理シート_Excel用_${getTodayYMD()}.csv`);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-
-            logAudit("担当者Excel用出力", `ファイル名: 担当一覧管理シート_Excel用_${getTodayYMD()}.csv`);
-            showToast("Excel互換形式の担当者ファイルを出力しました。", "success");
-        }
-
-        function importWorkersCSV(event) {
-            const file = event.target.files[0];
+        window.importWorkersCSV = function(evt) {
+            const file = evt.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                try {
-                    const text = e.target.result;
-                    const lines = text.split(/\r\n|\n/);
-                    const newWorkers = [];
-
-                    for (let i = 1; i < lines.length; i++) {
-                        const line = lines[i].trim();
-                        if (!line) continue;
-                        const delimiter = line.includes('\t') ? '\t' : ',';
-                        const row = parseCSVLine(line, delimiter);
-                        if (row[0]) {
-                            const name = row[0].trim();
-                            if (name && !newWorkers.includes(name)) {
-                                newWorkers.push(name);
-                            }
-                        }
-                    }
-
-                    if (newWorkers.length > 0) {
-                        workerList = newWorkers;
-                        saveData();
-                        logAudit("担当者インポート完了", `読込件数: ${newWorkers.length}名 (ファイル名: ${file.name})`);
-                        showToast(`担当一覧をインポートしました (${newWorkers.length}名)`, "success");
-                    } else {
-                        showToast("有効な担当者データが見つかりませんでした。", "error");
-                    }
-                } catch (err) {
-                    console.error(err);
-                    showToast("担当者ファイルの読み込みに失敗しました。", "error");
+                const lines = e.target.result.split(/\r\n|\n/);
+                const newList = [];
+                lines.forEach((l, idx) => {
+                    if (idx === 0 || !l.trim()) return;
+                    const name = l.replace(/^"|"$/g, '').trim();
+                    if (name) newList.push(name);
+                });
+                if (newList.length > 0) {
+                    window.workerList = newList;
+                    localStorage.setItem("inventory_workers", JSON.stringify(newList));
+                    updateWorkerDropdowns();
+                    showToast(`${newList.length}名の担当者を読み込みました`);
+                    addAuditLog("担当者マスターCSVをインポート完了");
                 }
-                event.target.value = '';
             };
-            reader.readAsText(file, 'UTF-8');
-        }
+            reader.readAsText(file);
+        };
 
-        function parseCSVLine(text, delimiter = ',') {
-            const result = [];
-            let inQuotes = false;
-            let current = '';
-            
-            for (let i = 0; i < text.length; i++) {
-                const char = text[i];
-                if (char === '"') {
-                    if (inQuotes && text[i+1] === '"') {
-                        current += '"';
-                        i++;
-                    } else {
-                        inQuotes = !inQuotes;
-                    }
-                } else if (char === delimiter && !inQuotes) {
-                    result.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
-                }
+        window.resetToMaster = function() {
+            if (!confirm("すべてのデータを初期状態に復元しますか？")) return;
+            localStorage.removeItem("demo_inventory_items");
+            localStorage.removeItem("demo_inventory_logs");
+            loadMasterDefaults();
+            window.transactionLogs = [];
+            renderAll();
+            showToast("データを初期状態に復元しました");
+            addAuditLog("システム初期化を実行");
+        };
+
+        function addAuditLog(action) {
+            const time = new Date().toLocaleString('ja-JP');
+            window.auditLogs.unshift(`[${time}] ${action}`);
+            const container = document.getElementById("auditLogContainer");
+            if (container) {
+                container.innerHTML = window.auditLogs.map(l => `<div>${escapeHtml(l)}</div>`).join('');
             }
-            result.push(current.trim());
-            return result.map(val => val.replace(/^"|"$/g, ''));
         }
 
-        function resetToMaster() {
-            if (confirm("初期の263型番・800台のマスターデータおよび初期担当者に復元しますか？")) {
-                masterData = JSON.parse(JSON.stringify(initialMasterData));
-                workerList = JSON.parse(JSON.stringify(initialWorkers));
-                saveData();
+        window.clearAuditLogs = function() {
+            window.auditLogs = [];
+            document.getElementById("auditLogContainer").innerHTML = "";
+        };
+
+        window.openModal = function(id) {
+            document.getElementById(id).classList.remove("hidden");
+            if (id === 'analyticsModal') initAnalyticsChart();
+        };
+
+        window.closeModal = function(id) {
+            document.getElementById(id).classList.add("hidden");
+        };
+
+        window.toggleDarkMode = function() {
+            const html = document.documentElement;
+            const icon = document.getElementById("themeIcon");
+            if (html.classList.contains("dark")) {
+                html.classList.remove("dark");
+                icon.className = "fa-solid fa-moon text-base";
+            } else {
+                html.classList.add("dark");
+                icon.className = "fa-solid fa-sun text-base text-amber-400";
+            }
+        };
+
+        window.onSearchInput = function() {
+            const val = document.getElementById("searchInput").value;
+            const clearBtn = document.getElementById("searchClearBtn");
+            const badge = document.getElementById("searchResultBadge");
+            const count = document.getElementById("searchResultCount");
+            const notice = document.getElementById("searchPromptNotice");
+
+            if (val) {
+                clearBtn.classList.remove("hidden");
+                badge.classList.remove("hidden");
+                notice.classList.remove("hidden");
+            } else {
+                clearBtn.classList.add("hidden");
+                badge.classList.add("hidden");
+                notice.classList.add("hidden");
+            }
+
+            window.currentPage = 1;
+            renderTable();
+            count.textContent = getFilteredItems().length;
+        };
+
+        window.clearSearch = function() {
+            document.getElementById("searchInput").value = "";
+            onSearchInput();
+        };
+
+        window.filterCategoryFromDashboard = function(cat) {
+            document.getElementById("categoryFilter").value = cat;
+            renderTable();
+        };
+
+        window.filterLowStock = function() {
+            document.getElementById("stockFilter").value = "lowStock";
+            renderTable();
+        };
+
+        window.sortTable = function(colIdx) {
+            if (window.sortCol === colIdx) {
+                window.sortAsc = !window.sortAsc;
+            } else {
+                window.sortCol = colIdx;
+                window.sortAsc = true;
+            }
+            renderTable();
+        };
+
+        window.prevPage = function() {
+            if (window.currentPage > 1) {
+                window.currentPage--;
                 renderTable();
-                closeModal('adminModal');
-                logAudit("全データ初期化", "初期マスター・担当者へリセット");
-                showToast("初期データに復元しました。", "info");
             }
-        }
+        };
 
-        function getTodayYMD() {
-            return new Date().toISOString().split('T')[0].replace(/-/g, '');
-        }
+        window.nextPage = function() {
+            window.currentPage++;
+            renderTable();
+        };
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
+        window.changePageSize = function() {
+            window.pageSize = parseInt(document.getElementById("pageSizeSelect").value, 10);
+            window.currentPage = 1;
+            renderTable();
+        };
 
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            
-            let bgClass = 'bg-slate-800 text-white';
-            if (type === 'success') bgClass = 'bg-emerald-700 text-white';
-            else if (type === 'error') bgClass = 'bg-rose-700 text-white';
-
-            toast.className = `${bgClass} shadow-lg rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all transform translate-y-2 opacity-0 border border-white/10 pointer-events-auto`;
-            toast.innerHTML = `<span>${message}</span>`;
-            
+        function showToast(msg, type = "info") {
+            const container = document.getElementById("toastContainer");
+            const toast = document.createElement("div");
+            toast.className = `p-3.5 rounded-xl shadow-lg text-xs font-bold text-white flex items-center gap-2 transition-all duration-300 transform translate-y-2 ${type === 'error' ? 'bg-rose-600' : 'bg-slate-800'}`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>${escapeHtml(msg)}</span>`;
             container.appendChild(toast);
-            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => toast.classList.remove("translate-y-2"), 10);
             setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
+                toast.classList.add("opacity-0");
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
 
-        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function downloadFile(content, fileName, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function getFormattedDate() {
+            const d = new Date();
+            return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // Firebase Config Setup Handlers
+        document.getElementById('btn-save-config').addEventListener('click', () => {
+            const val = document.getElementById('config-json-input').value.trim();
+            try {
+                JSON.parse(val);
+                localStorage.setItem('firebase_team_config', val);
+                location.reload();
+            } catch (e) {
+                alert("正しいJSON形式（またはオブジェクト記述）を入力してください。");
+            }
+        });
+
+        document.getElementById('btn-clear-config').addEventListener('click', () => {
+            if (confirm("Firebase設定を解除してデモモードに戻しますか？")) {
+                localStorage.removeItem('firebase_team_config');
+                location.reload();
+            }
+        });
+
+        // App Initial Load Trigger
+        window.addEventListener('load', () => {
+            initApp();
+        });
     </script>
 </body>
 </html>
