@@ -85,6 +85,7 @@
                 </div>
             </div>
 
+            <!-- Header Buttons Toolbar -->
             <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
                 <!-- Theme Toggle Button -->
                 <button onclick="toggleDarkMode()" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition" title="ダーク/ライトモード切替">
@@ -98,7 +99,7 @@
                 </button>
 
                 <!-- Analytics Chart Toggle -->
-                <button onclick="openModal('analyticsModal')" class="bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 font-bold px-3 py-2 rounded-xl text-xs sm:text-sm border border-indigo-200 dark:border-indigo-800 transition flex items-center gap-1.5 active:scale-[0.98]">
+                <button onclick="openAnalyticsModal()" class="bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 font-bold px-3 py-2 rounded-xl text-xs sm:text-sm border border-indigo-200 dark:border-indigo-800 transition flex items-center gap-1.5 active:scale-[0.98]">
                     <i class="fa-solid fa-chart-pie text-indigo-600 dark:text-indigo-400"></i>
                     <span class="hidden sm:inline">在庫</span>分析
                 </button>
@@ -657,7 +658,7 @@
                 <div class="border border-rose-200 dark:border-rose-900 rounded-xl p-3.5 bg-rose-50 dark:bg-rose-950/30 space-y-2">
                     <h4 class="font-bold text-rose-800 dark:text-rose-200 text-sm">初期状態へ復元</h4>
                     <p class="text-rose-600 dark:text-rose-300 text-xs">ローカル変更を破棄し、初期のマスターデータに復元します。</p>
-                    <button onclick="resetToMaster()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition shadow">
+                    <button onclick="resetToMasterPrompt()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition shadow">
                         全データ初期化
                     </button>
                 </div>
@@ -686,20 +687,37 @@
                     <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase mb-1">Firebase Configuration (JSON / JS Object)</label>
                     <textarea id="config-json-input" rows="8" placeholder='{
   "apiKey": "AIzaSy...",
-  "authDomain": "your-app.firebaseapp.com",
-  "projectId": "your-app-id",
-  "storageBucket": "your-app.appspot.com",
-  "messagingSenderId": "123456789",
-  "appId": "1:123456789:web:abcdef"
+  "authDomain": "web-zaiko2.firebaseapp.com",
+  "projectId": "web-zaiko2",
+  "storageBucket": "web-zaiko2.firebasestorage.app",
+  "messagingSenderId": "337997046351",
+  "appId": "1:337997046351:web:bdc2dfca92840b2225003a"
 }' class="w-full font-mono text-xs px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"></textarea>
                 </div>
                 <div class="pt-2 flex gap-2">
-                    <button id="btn-clear-config" type="button" class="py-2 px-3 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl text-xs hover:bg-red-50 dark:hover:bg-red-950/40">設定解除</button>
+                    <button id="btn-clear-config" type="button" onclick="clearFirebaseConfig()" class="py-2 px-3 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl text-xs hover:bg-red-50 dark:hover:bg-red-950/40">設定解除</button>
                     <div class="flex-1 flex gap-2 justify-end">
                         <button type="button" onclick="closeModal('configModal')" class="py-2.5 px-4 border border-slate-300 dark:border-slate-600 rounded-xl font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 text-sm">キャンセル</button>
-                        <button id="btn-save-config" type="button" class="py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium shadow-sm text-sm">接続を更新</button>
+                        <button id="btn-save-config" type="button" onclick="saveFirebaseConfig()" class="py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium shadow-sm text-sm">接続を更新</button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal Confirm Box -->
+    <div id="customConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-4">
+            <div class="w-12 h-12 bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h4 id="confirmModalTitle" class="font-bold text-slate-900 dark:text-white text-base">確認</h4>
+                <p id="confirmModalMessage" class="text-xs text-slate-500 dark:text-slate-400 mt-1">本当に行いますか？</p>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button id="confirmModalCancelBtn" class="flex-1 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-700 dark:text-slate-300">キャンセル</button>
+                <button id="confirmModalOkBtn" class="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow">実行する</button>
             </div>
         </div>
     </div>
@@ -720,6 +738,16 @@
             onSnapshot, 
             serverTimestamp 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Embed Default User Provided Firebase Configuration
+        const defaultFirebaseConfig = {
+            "apiKey": "AIzaSyD2R1s_8q3Z9sc7Y6EEX9oYg7zWtDSJY88",
+            "authDomain": "web-zaiko2.firebaseapp.com",
+            "projectId": "web-zaiko2",
+            "storageBucket": "web-zaiko2.firebasestorage.app",
+            "messagingSenderId": "337997046351",
+            "appId": "1:337997046351:web:bdc2dfca92840b2225003a"
+        };
 
         // Global State Management
         window.inventoryItems = [];
@@ -769,30 +797,40 @@
             }
 
             const savedConfigStr = localStorage.getItem("firebase_team_config");
-            if (!savedConfigStr) {
-                console.log("Firebase config not found. Operating in Demo Mode.");
-                setupDemoMode();
-            } else {
-                try {
-                    const config = JSON.parse(savedConfigStr);
-                    const app = initializeApp(config);
-                    window.auth = getAuth(app);
-                    window.db = getFirestore(app);
+            let targetConfig = defaultFirebaseConfig;
 
-                    signInAnonymously(window.auth).then(() => {
-                        window.isFirebaseConnected = true;
-                        updateConnectionUI(true);
-                        subscribeFirestore();
-                        addAuditLog("Firebase リアルタイムデータベースに正常接続");
-                    }).catch(err => {
-                        console.error("Firebase auth error:", err);
-                        showToast("Firebase認証に失敗しました。デモモードで起動します。", "error");
-                        setupDemoMode();
-                    });
+            if (savedConfigStr) {
+                try {
+                    targetConfig = JSON.parse(savedConfigStr);
                 } catch(e) {
-                    console.error("Firebase Config Error:", e);
-                    setupDemoMode();
+                    console.error("Custom config error:", e);
                 }
+            }
+
+            // Pre-fill Modal Textarea with active config JSON
+            const textarea = document.getElementById("config-json-input");
+            if (textarea) {
+                textarea.value = JSON.stringify(targetConfig, null, 2);
+            }
+
+            try {
+                const app = initializeApp(targetConfig);
+                window.auth = getAuth(app);
+                window.db = getFirestore(app);
+
+                signInAnonymously(window.auth).then(() => {
+                    window.isFirebaseConnected = true;
+                    updateConnectionUI(true);
+                    subscribeFirestore();
+                    addAuditLog("Firebase (web-zaiko2) リアルタイムDBに正常接続しました");
+                }).catch(err => {
+                    console.error("Firebase auth error:", err);
+                    showToast("Firebase認証に失敗しました。デモモードで起動します。", "error");
+                    setupDemoMode();
+                });
+            } catch(e) {
+                console.error("Firebase Config Error:", e);
+                setupDemoMode();
             }
         };
 
@@ -839,7 +877,7 @@
 
             if (connected) {
                 dot.className = "w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse";
-                text.textContent = "Firebase リアルタイム同期中";
+                text.textContent = "Firebase (web-zaiko2) 同期中";
                 pill.className = "inline-flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded text-[11px]";
             } else {
                 dot.className = "w-2 h-2 rounded-full bg-amber-500 inline-block";
@@ -856,7 +894,6 @@
 
             onSnapshot(itemsRef, (snapshot) => {
                 if (snapshot.empty && window.inventoryItems.length === 0) {
-                    // Seed initial data if DB empty
                     seedFirestore();
                     return;
                 }
@@ -958,7 +995,6 @@
         window.renderTable = function() {
             let filtered = getFilteredItems();
 
-            // Sorting
             if (window.sortCol >= 0) {
                 const keys = ['category', 'maker', 'code', 'stock', 'location'];
                 const key = keys[window.sortCol];
@@ -1121,7 +1157,7 @@
             const note = document.getElementById("dispatchNote").value;
 
             if (!id || isNaN(qty) || qty <= 0 || !worker) {
-                alert("型番、持ち出し台数、担当者名を正しく設定してください。");
+                showToast("型番、持ち出し台数、担当者名を正しく設定してください。", "error");
                 return;
             }
 
@@ -1143,7 +1179,7 @@
             const note = document.getElementById("receiveNote").value;
 
             if (!id || isNaN(qty) || qty <= 0 || !worker) {
-                alert("型番、返納台数、担当者名を正しく設定してください。");
+                showToast("型番、返納台数、担当者名を正しく設定してください。", "error");
                 return;
             }
 
@@ -1176,10 +1212,9 @@
                     });
                 } catch(e) {
                     console.error("Firestore update error:", e);
-                    alert("更新に失敗しました。");
+                    showToast("更新に失敗しました。", "error");
                 }
             } else {
-                // Demo Local update
                 const item = window.inventoryItems.find(i => i.id === id);
                 if (item) item.stock = newStock;
                 saveDemoItems();
@@ -1207,7 +1242,7 @@
             const note = document.getElementById("newNote").value;
 
             if (!code) {
-                alert("型番を入力してください。");
+                showToast("型番を入力してください。", "error");
                 return;
             }
 
@@ -1229,26 +1264,28 @@
             showToast(`新規型番 ${code} を登録しました`);
         };
 
-        window.deleteItem = async function(id) {
+        window.deleteItem = function(id) {
             const item = window.inventoryItems.find(i => i.id === id);
             if (!item) return;
-            if (!confirm(`型番「${item.code}」をマスターから削除しますか？`)) return;
 
-            if (window.isFirebaseConnected && window.db) {
-                try {
-                    const docRef = doc(window.db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_ITEMS, id);
-                    await deleteDoc(docRef);
-                } catch(e) { console.error("Delete error:", e); }
-            } else {
-                window.inventoryItems = window.inventoryItems.filter(i => i.id !== id);
-                saveDemoItems();
-                renderAll();
-            }
-            showToast(`型番 ${item.code} を削除しました`);
+            showConfirm("マスター削除の確認", `型番「${item.code}」をマスターから削除しますか？`, async () => {
+                if (window.isFirebaseConnected && window.db) {
+                    try {
+                        const docRef = doc(window.db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_ITEMS, id);
+                        await deleteDoc(docRef);
+                    } catch(e) { console.error("Delete error:", e); }
+                } else {
+                    window.inventoryItems = window.inventoryItems.filter(i => i.id !== id);
+                    saveDemoItems();
+                    renderAll();
+                }
+                showToast(`型番 ${item.code} を削除しました`);
+            });
         };
 
         function renderLogs() {
             const tbody = document.getElementById("transactionLogBody");
+            if (!tbody) return;
             tbody.innerHTML = "";
 
             window.transactionLogs.slice(0, 50).forEach(log => {
@@ -1273,17 +1310,18 @@
         }
 
         window.clearTransactionLogs = function() {
-            if (!confirm("入出庫履歴ログをクリアしますか？")) return;
-            window.transactionLogs = [];
-            if (!window.isFirebaseConnected) saveDemoLogs();
-            renderLogs();
-            showToast("履歴ログをクリアしました");
+            showConfirm("履歴削除", "入出庫履歴ログをクリアしますか？", () => {
+                window.transactionLogs = [];
+                if (!window.isFirebaseConnected) saveDemoLogs();
+                renderLogs();
+                showToast("履歴ログをクリアしました");
+            });
         };
 
-        // Worker Management
         function updateWorkerDropdowns() {
             ['dispatch', 'receive'].forEach(type => {
                 const sel = document.getElementById(`${type}WorkerSelect`);
+                if (!sel) return;
                 sel.innerHTML = '<option value="">-- 担当者を選択 --</option>';
                 window.workerList.forEach(w => {
                     sel.add(new Option(w, w));
@@ -1345,7 +1383,7 @@
         }
 
         function onScanError(err) {
-            // Ignore frame scan errors
+            // Frame scanner listener silent
         }
 
         window.simulateScanPrompt = function() {
@@ -1369,9 +1407,17 @@
             openModal('qrModal');
         };
 
-        // Analytics Modal Chart
-        window.initAnalyticsChart = function() {
-            const ctx = document.getElementById("categoryPieChart").getContext("2d");
+        window.openAnalyticsModal = function() {
+            openModal('analyticsModal');
+            setTimeout(() => {
+                initAnalyticsChart();
+            }, 100);
+        };
+
+        function initAnalyticsChart() {
+            const canvas = document.getElementById("categoryPieChart");
+            if (!canvas) return;
+            const ctx = canvas.getContext("2d");
             const catMap = { 'ランプ': 0, '安定器': 0, '器具': 0, '三郷在庫': 0, '電材他': 0 };
             window.inventoryItems.forEach(i => {
                 if (catMap[i.category] !== undefined) catMap[i.category] += (Number(i.stock) || 0);
@@ -1396,7 +1442,7 @@
                     }
                 }
             });
-        };
+        }
 
         window.exportMasterCSV = function() {
             let csv = "\uFEFF大分類,メーカー,型番,台数,場所,補足,出品\n";
@@ -1446,7 +1492,7 @@
         window.exportWorkersCSV = function() {
             let csv = "\uFEFF担当者名\n";
             window.workerList.forEach(w => csv += `"${w}"\n`);
-            downloadFile(csv, `担当者マスター_${getFormattedDate()}.csv`, "text/csv;charset=utf-8;");
+            downloadFile(csv, `担当者一覧_${getFormattedDate()}.csv`, "text/csv;charset=utf-8;");
             addAuditLog("担当者マスターCSVを出力");
         };
 
@@ -1456,90 +1502,147 @@
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                const lines = e.target.result.split(/\r\n|\n/);
-                const newList = [];
-                lines.forEach((l, idx) => {
-                    if (idx === 0 || !l.trim()) return;
-                    const name = l.replace(/^"|"$/g, '').trim();
-                    if (name) newList.push(name);
+                const text = e.target.result;
+                const lines = text.split(/\r\n|\n/);
+                const newWorkers = [];
+
+                lines.forEach((line, idx) => {
+                    if (idx === 0 || !line.trim()) return;
+                    const name = line.replace(/^"|"$/g, '').trim();
+                    if (name && !newWorkers.includes(name)) newWorkers.push(name);
                 });
-                if (newList.length > 0) {
-                    window.workerList = newList;
-                    localStorage.setItem("inventory_workers", JSON.stringify(newList));
+
+                if (newWorkers.length > 0) {
+                    window.workerList = newWorkers;
+                    localStorage.setItem("inventory_workers", JSON.stringify(newWorkers));
                     updateWorkerDropdowns();
-                    showToast(`${newList.length}名の担当者を読み込みました`);
-                    addAuditLog("担当者マスターCSVをインポート完了");
+                    showToast(`${newWorkers.length}名の担当者マスターを取り込みました`);
+                    addAuditLog(`担当者CSVインポート完了 (${newWorkers.length}名)`);
                 }
             };
             reader.readAsText(file);
         };
 
-        window.resetToMaster = function() {
-            if (!confirm("すべてのデータを初期状態に復元しますか？")) return;
-            localStorage.removeItem("demo_inventory_items");
-            localStorage.removeItem("demo_inventory_logs");
-            loadMasterDefaults();
-            window.transactionLogs = [];
-            renderAll();
-            showToast("データを初期状態に復元しました");
-            addAuditLog("システム初期化を実行");
-        };
-
-        function addAuditLog(action) {
-            const time = new Date().toLocaleString('ja-JP');
-            window.auditLogs.unshift(`[${time}] ${action}`);
+        function addAuditLog(msg) {
+            const logItem = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            window.auditLogs.unshift(logItem);
             const container = document.getElementById("auditLogContainer");
             if (container) {
-                container.innerHTML = window.auditLogs.map(l => `<div>${escapeHtml(l)}</div>`).join('');
+                container.innerHTML = window.auditLogs.slice(0, 30).map(l => `<div>${escapeHtml(l)}</div>`).join("");
             }
         }
 
         window.clearAuditLogs = function() {
             window.auditLogs = [];
-            document.getElementById("auditLogContainer").innerHTML = "";
+            const container = document.getElementById("auditLogContainer");
+            if (container) container.innerHTML = "";
+            showToast("監査ログをクリアしました");
         };
 
-        window.openModal = function(id) {
-            document.getElementById(id).classList.remove("hidden");
-            if (id === 'analyticsModal') initAnalyticsChart();
+        window.resetToMasterPrompt = function() {
+            showConfirm("マスター初期化", "すべての変更を破棄して初期データに復元しますか？", () => {
+                localStorage.removeItem("demo_inventory_items");
+                localStorage.removeItem("demo_inventory_logs");
+                loadMasterDefaults();
+                renderAll();
+                showToast("初期マスターデータにリセットしました");
+            });
         };
 
-        window.closeModal = function(id) {
-            document.getElementById(id).classList.add("hidden");
-        };
+        window.saveFirebaseConfig = function() {
+            const jsonText = document.getElementById("config-json-input").value.trim();
+            if (!jsonText) return;
 
-        window.toggleDarkMode = function() {
-            const html = document.documentElement;
-            const icon = document.getElementById("themeIcon");
-            if (html.classList.contains("dark")) {
-                html.classList.remove("dark");
-                icon.className = "fa-solid fa-moon text-base";
-            } else {
-                html.classList.add("dark");
-                icon.className = "fa-solid fa-sun text-base text-amber-400";
+            try {
+                const parsed = JSON.parse(jsonText);
+                localStorage.setItem("firebase_team_config", JSON.stringify(parsed));
+                closeModal('configModal');
+                showToast("Firebase設定を保存しました。再起動します...");
+                setTimeout(() => location.reload(), 1000);
+            } catch(e) {
+                showToast("JSON形式が不正です。設定を確認してください。", "error");
             }
         };
 
+        window.clearFirebaseConfig = function() {
+            showConfirm("設定解除", "Firebaseカスタム設定を解除して再読み込みしますか？", () => {
+                localStorage.removeItem("firebase_team_config");
+                closeModal('configModal');
+                showToast("設定をリセットしました");
+                setTimeout(() => location.reload(), 1000);
+            });
+        };
+
+        window.openModal = function(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove("hidden");
+        };
+
+        window.closeModal = function(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add("hidden");
+        };
+
+        window.showConfirm = function(title, message, onOk) {
+            const modal = document.getElementById("customConfirmModal");
+            document.getElementById("confirmModalTitle").textContent = title;
+            document.getElementById("confirmModalMessage").textContent = message;
+
+            const cancelBtn = document.getElementById("confirmModalCancelBtn");
+            const okBtn = document.getElementById("confirmModalOkBtn");
+
+            const cleanup = () => {
+                modal.classList.add("hidden");
+                okBtn.onclick = null;
+                cancelBtn.onclick = null;
+            };
+
+            cancelBtn.onclick = cleanup;
+            okBtn.onclick = () => {
+                cleanup();
+                if (onOk) onOk();
+            };
+
+            modal.classList.remove("hidden");
+        };
+
+        window.showToast = function(msg, type = "success") {
+            const container = document.getElementById("toastContainer");
+            if (!container) return;
+
+            const toast = document.createElement("div");
+            const bgClass = type === "error" ? "bg-rose-600 text-white" : "bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900";
+            toast.className = `px-4 py-3 rounded-xl shadow-lg font-bold text-xs flex items-center gap-2 transition-all duration-300 transform translate-y-2 pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i> <span>${escapeHtml(msg)}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove("translate-y-2"), 10);
+            setTimeout(() => {
+                toast.classList.add("opacity-0", "translate-y-2");
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        };
+
         window.onSearchInput = function() {
-            const val = document.getElementById("searchInput").value;
-            const clearBtn = document.getElementById("searchClearBtn");
+            const val = document.getElementById("searchInput").value.trim();
             const badge = document.getElementById("searchResultBadge");
-            const count = document.getElementById("searchResultCount");
+            const clearBtn = document.getElementById("searchClearBtn");
             const notice = document.getElementById("searchPromptNotice");
 
             if (val) {
-                clearBtn.classList.remove("hidden");
                 badge.classList.remove("hidden");
+                clearBtn.classList.remove("hidden");
                 notice.classList.remove("hidden");
             } else {
-                clearBtn.classList.add("hidden");
                 badge.classList.add("hidden");
+                clearBtn.classList.add("hidden");
                 notice.classList.add("hidden");
             }
 
             window.currentPage = 1;
             renderTable();
-            count.textContent = getFilteredItems().length;
+            const filtered = getFilteredItems();
+            document.getElementById("searchResultCount").textContent = filtered.length;
         };
 
         window.clearSearch = function() {
@@ -1549,21 +1652,20 @@
 
         window.filterCategoryFromDashboard = function(cat) {
             document.getElementById("categoryFilter").value = cat;
+            document.getElementById("stockFilter").value = "all";
+            window.currentPage = 1;
             renderTable();
         };
 
         window.filterLowStock = function() {
             document.getElementById("stockFilter").value = "lowStock";
+            window.currentPage = 1;
             renderTable();
         };
 
-        window.sortTable = function(colIdx) {
-            if (window.sortCol === colIdx) {
-                window.sortAsc = !window.sortAsc;
-            } else {
-                window.sortCol = colIdx;
-                window.sortAsc = true;
-            }
+        window.changePageSize = function() {
+            window.pageSize = parseInt(document.getElementById("pageSizeSelect").value, 10);
+            window.currentPage = 1;
             renderTable();
         };
 
@@ -1579,68 +1681,56 @@
             renderTable();
         };
 
-        window.changePageSize = function() {
-            window.pageSize = parseInt(document.getElementById("pageSizeSelect").value, 10);
-            window.currentPage = 1;
+        window.sortTable = function(colIdx) {
+            if (window.sortCol === colIdx) {
+                window.sortAsc = !window.sortAsc;
+            } else {
+                window.sortCol = colIdx;
+                window.sortAsc = true;
+            }
             renderTable();
         };
 
-        function showToast(msg, type = "info") {
-            const container = document.getElementById("toastContainer");
-            const toast = document.createElement("div");
-            toast.className = `p-3.5 rounded-xl shadow-lg text-xs font-bold text-white flex items-center gap-2 transition-all duration-300 transform translate-y-2 ${type === 'error' ? 'bg-rose-600' : 'bg-slate-800'}`;
-            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>${escapeHtml(msg)}</span>`;
-            container.appendChild(toast);
-            setTimeout(() => toast.classList.remove("translate-y-2"), 10);
-            setTimeout(() => {
-                toast.classList.add("opacity-0");
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        function downloadFile(content, fileName, mimeType) {
-            const blob = new Blob([content], { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
+        window.toggleDarkMode = function() {
+            const html = document.documentElement;
+            const icon = document.getElementById("themeIcon");
+            if (html.classList.contains("dark")) {
+                html.classList.remove("dark");
+                icon.className = "fa-solid fa-moon text-base";
+            } else {
+                html.classList.add("dark");
+                icon.className = "fa-solid fa-sun text-base text-amber-400";
+            }
+        };
 
         function getFormattedDate() {
             const d = new Date();
-            return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+            return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+        }
+
+        function downloadFile(content, fileName, contentType) {
+            const a = document.createElement("a");
+            const file = new Blob([content], { type: contentType });
+            a.href = URL.createObjectURL(file);
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(a.href);
         }
 
         function escapeHtml(str) {
-            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
 
-        // Firebase Config Setup Handlers
-        document.getElementById('btn-save-config').addEventListener('click', () => {
-            const val = document.getElementById('config-json-input').value.trim();
-            try {
-                JSON.parse(val);
-                localStorage.setItem('firebase_team_config', val);
-                location.reload();
-            } catch (e) {
-                alert("正しいJSON形式（またはオブジェクト記述）を入力してください。");
-            }
-        });
-
-        document.getElementById('btn-clear-config').addEventListener('click', () => {
-            if (confirm("Firebase設定を解除してデモモードに戻しますか？")) {
-                localStorage.removeItem('firebase_team_config');
-                location.reload();
-            }
-        });
-
-        // App Initial Load Trigger
-        window.addEventListener('load', () => {
-            initApp();
-        });
+        // Window Load Bootstrapper
+        window.onload = function() {
+            window.initApp();
+        };
     </script>
 </body>
 </html>
